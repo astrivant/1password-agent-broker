@@ -53,3 +53,11 @@ Use this inventory when adding or changing a delivery path. Record the source re
 | Live provider/deployment | Operator-authorized integration with real account permissions and infrastructure; synthetic CI does not cover this. |
 
 GitHub metadata is declared in `.github/settings.yml`; verify the host after applying it because the file has no effect without a settings integration. The audit script uses authenticated `gh` and `jq`, reads secret names only, and never retrieves secret values. It reports policy state without silently changing protection rules. Coverage publication is a leaf job and writes only its derived branch, so it cannot cause recursive main builds.
+
+## Initial release evidence
+
+The first release, [v0.0.1](https://github.com/astrivant/1password-agent-broker/releases/tag/v0.0.1), was exercised through the [main pipeline](https://github.com/astrivant/1password-agent-broker/actions/runs/38126459312) and [tag pipeline](https://github.com/astrivant/1password-agent-broker/actions/runs/38126650838). Both passed. All local hooks and 29 Python tests passed before publication. The measured coverage payload was read back from its derived branch, and GitHub reported that generated commit as verified.
+
+After publication, both distribution checksums passed and the release bundle verified against the separately retained maintainer key. The downloaded wheel was installed in a fresh environment and its demo ran outside the checkout: two healthy operations, replay without resubmission, rejected cross-identity access, and zero external provider calls.
+
+This evidence describes that release. Live 1Password permissions, production deployment, and operator-selected branch protection still require separate acceptance. Changes to those contracts should add their own reproducible checks rather than inherit this release's result.
