@@ -1,67 +1,103 @@
 # 1Password Agent Broker
 
-Let agents use credentials without handing them the keys. An operator approves a named capability, the broker authenticates the workload and performs the operation, and the agent receives a bounded result. Every attempt has a durable, secret-free audit trail.
+Let agents use credentials without handing them the keys. Approve a capability, let the broker perform the operation, and return the result to the agent. Credential access and authorization stay in a service you control.
 
-[![CI](https://github.com/astrivant/1password-agent-broker/actions/workflows/ci.yml/badge.svg)](https://github.com/astrivant/1password-agent-broker/actions/workflows/ci.yml)
+[![Python coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fastrivant%2F1password-agent-broker%2Fcoverage%2Fbadges%2Fcoverage.json)](https://github.com/astrivant/1password-agent-broker/actions/workflows/ci.yml)
+
+**Contents**
 
 <!-- toc -->
 
-- [Try it](#try-it)
-- [What you get](#what-you-get)
-- [Connect a real service](#connect-a-real-service)
-- [Architecture and trust](#architecture-and-trust)
-- [Project documentation](#project-documentation)
+- [Quick start](#quick-start)
+  - [Install and try it](#install-and-try-it)
+  - [Use with an AI agent](#use-with-an-ai-agent)
+- [Why use this tool?](#why-use-this-tool)
+- [How it works](#how-it-works)
+  - [Request and credential flow](#request-and-credential-flow)
+  - [Trust boundary](#trust-boundary)
+- [Operate the broker](#operate-the-broker)
+  - [Connect 1Password and an agent](#connect-1password-and-an-agent)
+  - [Review access and recover work](#review-access-and-recover-work)
+- [Documentation](#documentation)
+  - [Deployment and security](#deployment-and-security)
+  - [Development and releases](#development-and-releases)
 
 <!-- /toc -->
 
-## Try it
+## Quick start
 
-Requires Python 3.12 or newer, excluding 3.14.1, and Git. The demo requires no 1Password account, model API key, or cloud infrastructure.
+### Install and try it
+
+Requires Python 3.12 or newer, excluding 3.14.1, and Git. No 1Password account, model API key, or cloud infrastructure is needed for the demo.
 
 ```sh
 python -m pip install 'git+https://github.com/astrivant/1password-agent-broker.git'
 agent-broker demo
 ```
 
-The bounded demo creates two synthetic identities, a local HTTPS target, and a mutually authenticated broker. It reports two healthy operations, successful replay protection, cross-identity denial, and zero external provider calls. Temporary certificates and data are removed on exit.
+The local demo reports two healthy operations, successful replay protection, cross-identity denial, and zero external provider calls. It creates temporary certificates and synthetic identities, then removes its temporary data on exit.
 
-## What you get
+### Use with an AI agent
 
-- **Keep credentials behind the broker.** Model requests cannot select arbitrary vaults, fields, URLs, HTTP methods, or headers.
-- **Separate identities.** Workload certificates bind each operation to a reviewed identity revision and run.
-- **Approve precisely.** Grants authorize one request, capability, principal, policy revision, and expiration time.
-- **Recover safely.** Lost-response retries return a recorded result. An uncertain outcome stays uncertain, so a retry cannot silently repeat an operation.
-- **Integrate through MCP.** The MCP 2 stdio adapter works as an agent-facing client. Authorization remains on the broker.
+Point your agent at [SKILL.md](SKILL.md) for the supported setup, validation, and operating procedures. Once a broker is configured, the [MCP setup](docs/operations.md#mcp-configuration) connects an agent through the Model Context Protocol (MCP), using its workload certificate.
 
-The first capability is an authenticated HTTPS health check. The provider and executor interfaces support adding reviewed capabilities; this version does not expose an arbitrary HTTP or secret-reading tool.
+## Why use this tool?
 
-## Connect a real service
+- **Keep credentials out of agent responses.** The broker resolves an approved credential and uses it for a fixed operation.
+- **Control each identity's access.** Workload certificates identify the caller; grants bind approval to a request, capability, policy revision, and expiry.
+- **Retry without repeating completed work.** Recorded results survive a lost response. Uncertain outcomes remain visible instead of being silently resubmitted.
+- **Keep an operational record.** Dispatched requests have a durable audit and replay ledger, without storing credential values.
+- **Connect through MCP.** An agent-facing stdio adapter delegates execution to the authenticated broker.
 
-Install the [official 1Password CLI](https://www.1password.dev/cli/get-started), create a narrowly scoped service account, and follow [operator setup](docs/operations.md). That guide includes the policy, certificate setup, approvals, MCP configuration, credential rotation, and cancellation.
+The first capability is an authenticated HTTPS health check. Provider and executor interfaces allow additional reviewed capabilities; agents cannot supply arbitrary secret references, URLs, headers, or HTTP methods.
 
-For an entirely local developer environment, consider [1Password's native Environments MCP server](https://www.1password.dev/environments/mcp-server) first. This broker addresses a different boundary: credential-backed operations executed in a trusted service, without returning those credentials to the agent.
+## How it works
 
-## Architecture and trust
+### Request and credential flow
 
 ```mermaid
 flowchart LR
     A[Agent / MCP client] --> M[MCP stdio adapter]
-    M -->|Mutual TLS, closed request| B[Broker]
+    M -->|Mutual TLS, capability request| B[Broker]
     P[Operator policy and approvals] --> B
     B --> L[Durable audit and replay ledger]
-    B -->|Exact field reference| O[1Password CLI]
+    B -->|Approved field reference| O[1Password CLI]
     O -->|In-memory credential| B
     B -->|Fixed HTTPS operation| S[Approved service]
 ```
 
-The broker and its host can access the credentials they use. Workload certificate keys grant capability access and must be protected. This is an alpha implementation with synthetic integration evidence, not a claim of isolation from a compromised host. Read [SECURITY.md](SECURITY.md) and [the architecture](docs/architecture.md) before introducing live credentials.
+The operator owns policy and approvals. The broker authenticates the workload, validates its request, and records execution state before accessing a credential. The agent receives a bounded result; authorization remains on the broker.
 
-## Project documentation
+### Trust boundary
 
-- [Operations and CLI](docs/operations.md)
-- [Validation and limitations](docs/validation.md)
-- [Development, containers, and pinned tools](docs/development.md)
-- [Contributing](CONTRIBUTING.md) and [agent instructions](SKILL.md)
-- [Origin: RFC #8](https://github.com/astrivant/product-research/pull/8)
+The broker and its host can access the credentials they use. Protect that host and the workload certificate keys. This alpha has synthetic integration evidence; live account permissions and deployment isolation require operator validation. See [security](SECURITY.md), [architecture](docs/architecture.md), and [validation boundaries](docs/validation.md).
+
+For a wholly local developer environment, consider [1Password's native Environments MCP server](https://www.1password.dev/environments/mcp-server). This broker is for credential-backed operations executed by a separately authenticated service.
+
+## Operate the broker
+
+### Connect 1Password and an agent
+
+Install the [official 1Password CLI](https://www.1password.dev/cli/get-started), create a narrowly scoped service account, and follow [operator setup](docs/operations.md). It covers policy, certificates, the broker process, request approvals, and MCP configuration.
+
+### Review access and recover work
+
+Use the [operations guide](docs/operations.md) for revocation, credential rotation, cancellation, and uncertain outcomes. Keep grant management on the operator side and inspect the durable ledger before retrying work whose result is unknown.
+
+## Documentation
+
+### Deployment and security
+
+- [Operations and CLI](docs/operations.md): configure and run the broker.
+- [Architecture](docs/architecture.md): ownership, interfaces, and data flow.
+- [Security policy](SECURITY.md): handling credentials and reporting vulnerabilities.
+- [Validation](docs/validation.md): covered contracts and remaining integration work.
+
+### Development and releases
+
+- [Development](docs/development.md): local checks, containers, and pinned tools.
+- [Signed releases](docs/development.md#release-signing): key setup, publishing, and artifact verification.
+- [Contributing](CONTRIBUTING.md) and [agent instructions](SKILL.md).
+- [Design proposal: RFC #8](https://github.com/astrivant/product-research/pull/8).
 
 This is an independent Astrivant project using 1Password's supported CLI. It is not an official 1Password product.

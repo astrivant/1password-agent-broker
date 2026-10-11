@@ -49,6 +49,30 @@ jobs:
         with:
           name: coverage-${{ matrix.python }}
           path: coverage.xml
+  coverage:
+    name: Publish measured coverage
+    needs: tests
+    if: >-
+      github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: coverage-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-3.14.8
+          path: artifacts/coverage
+      - run: python scripts/ci/checks/coverage.py
+      - name: Publish without changing main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/checks/publish-coverage.sh
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 20

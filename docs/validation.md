@@ -34,3 +34,22 @@ A canary check verifies specific output channels. It is not a proof that secrets
 The single [CI workflow](https://github.com/astrivant/1password-agent-broker/actions/workflows/ci.yml) runs lint, Python tests, packaging/container smoke checks, and Trivy in parallel. Coverage reports and redacted security findings are attached to the run. Release publication waits for those checks and runs only for version tags in the upstream repository.
 
 A green synthetic pipeline does not establish production readiness. Live 1Password authentication, organization-specific vault permissions, certificate issuance, ingress deployment, operational retention, and host isolation remain operator integration work.
+
+## Repository acceptance inventory
+
+Use this inventory when adding or changing a delivery path. Record the source revision, command or workflow, result, and any remaining gap. A facet is complete only when its relevant contract is exercised; use `not applicable` where a project deliberately has no such integration.
+
+| Facet | Reproducible evidence |
+| --- | --- |
+| Local source and documentation | All pre-commit hooks; generated contents current; Markdown destinations checked. |
+| Runtime behavior | Parallel pytest, supported Python versions, mTLS/MCP subprocesses, and bounded demo. |
+| Installable artifacts | Build wheel/source distribution; install the wheel outside the checkout and run its demo. |
+| Containers | Production and development builds; non-root, Tini, restricted runtime, and demo/test execution. |
+| Main and PR triggers | Push and pull-request events in CI; record the actual run rather than assuming one event tests the other. |
+| Security | Trivy vulnerability/secret scan, redacted reports, and documented trust boundaries. |
+| Host configuration | `bash scripts/qa/github.sh OWNER/REPO`: actual metadata, Actions enablement, read-only default token, signing verification, signing-secret presence, and active workflow. Branch protection and rulesets are reported for operator review. |
+| Coverage publication | Main run publishes the measured report; read back the badge payload and confirm its commit is verified. |
+| Signed release | A real tag run publishes artifacts; `bash scripts/qa/github.sh OWNER/REPO TAG` checks attachment completeness. Independently authenticate the signature, verify checksums, and test the downloaded wheel as described in [release signing](development.md#release-signing). |
+| Live provider/deployment | Operator-authorized integration with real account permissions and infrastructure; synthetic CI does not cover this. |
+
+GitHub metadata is declared in `.github/settings.yml`; verify the host after applying it because the file has no effect without a settings integration. The audit script uses authenticated `gh` and `jq`, reads secret names only, and never retrieves secret values. It reports policy state without silently changing protection rules. Coverage publication is a leaf job and writes only its derived branch, so it cannot cause recursive main builds.
