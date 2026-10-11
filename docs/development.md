@@ -74,13 +74,13 @@ bash scripts/release/setup-signing.sh OWNER/REPO /private/new-release-key-backup
 
 The script generates a P-256 PEM key, imports it into Cosign, writes a private backup, removes the temporary PEM, and sends the signing key to the repository's `COSIGN_PRIVATE_KEY` secret through stdin. It prints only the backup location and public-key fingerprint. It refuses to overwrite an existing backup directory. The default key has an empty Cosign passphrase; protect the backup using encrypted storage and mode 0700. For an existing password-protected key, additionally configure `COSIGN_PASSWORD` in GitHub.
 
-Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI signs checksums for the tested wheel and source distribution, verifies that signature, then uses `gh release create` to attach distributions, `SHA256SUMS`, its signature, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
+Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI signs checksums for the tested wheel and source distribution, verifies that signature, then uses `gh release create` to attach distributions, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
 
 Download all release files into one directory. Verify the public-key fingerprint against an independently trusted maintainer record, then:
 
 ```sh
-cosign verify-blob --insecure-ignore-tlog --key cosign.pub --signature SHA256SUMS.sig SHA256SUMS
+cosign verify-blob --insecure-ignore-tlog --key cosign.pub --bundle SHA256SUMS.sigstore.json SHA256SUMS
 sha256sum --check SHA256SUMS
 ```
 
-On macOS use `shasum -a 256 --check SHA256SUMS` for the second command. This key-based release scheme does not publish to a transparency log. The public key attached to a release is convenient verification material, not its own trust anchor.
+On macOS use `shasum -a 256 --check SHA256SUMS` for the second command. A synthetic signing check exercises these scripts in CI with temporary keys and a local GitHub stub. Cosign 3 requires a Sigstore bundle; the check prevents older signature-only flags from silently reaching a tag pipeline. This key-based release scheme does not publish to a transparency log. The public key attached to a release is convenient verification material, not its own trust anchor.

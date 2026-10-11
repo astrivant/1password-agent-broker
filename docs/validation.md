@@ -25,6 +25,7 @@ The tests exercise real local HTTPS/mTLS and an actual MCP 2 stdio subprocess. S
 | Audit | Export failure preserves durable state; storage failure before intent prevents credential access. |
 | Redaction | Generated canaries absent from results, MCP output/stderr, command arguments, and the SQLite audit file. |
 | Packaging | Wheel contains JSON schemas and SQL; container and installed CLI run the synthetic demo. |
+| Release integrity | Temporary key generation, Cosign 3 bundle creation/verification, and package checksums; GitHub calls replaced by a local stub. |
 
 A canary check verifies specific output channels. It is not a proof that secrets are absent from all operating-system memory, swap, core dumps, or external services. No real 1Password account, OpenAI account, provider API, or production destination is used in these tests.
 
