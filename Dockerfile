@@ -20,6 +20,7 @@ RUN poetry build && python -m venv /opt/broker \
     && /opt/broker/bin/pip install --no-deps dist/*.whl
 
 FROM build AS development
+COPY scripts/ scripts/
 RUN POETRY_VIRTUALENVS_CREATE=false VIRTUAL_ENV=/opt/broker poetry install --with dev --no-interaction \
     && chown -R broker:broker /build /opt/broker
 ENV PATH="/opt/broker/bin:$PATH"
