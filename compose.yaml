@@ -1,0 +1,22 @@
+services:
+  demo:
+    profiles: [demo]
+    build:
+      context: .
+      target: production
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+  development:
+    profiles: [development]
+    build:
+      context: .
+      target: development
+    command: [pytest, -n, '4']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 1g

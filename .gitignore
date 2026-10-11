@@ -1,0 +1,17 @@
+.venv/
+.cache/
+.coverage*
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+*.sqlite*
+*.key
+*.pem
+.env*
+*.db
+coverage.xml
+htmlcov/
+artifacts/

@@ -1,0 +1,56 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: Ruff lint
+        entry: poetry run ruff check
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: Ruff format
+        entry: poetry run ruff format --check
+        language: system
+        types: [python]
+      - id: mypy
+        name: Strict mypy
+        entry: poetry run mypy
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: pydocstyle
+        name: Google docstring style
+        entry: poetry run pydocstyle
+        language: system
+        types: [python]
+      - id: pydoclint
+        name: Typed docstring contracts
+        entry: poetry run pydoclint
+        language: system
+        types: [python]
+      - id: sqlfluff
+        name: SQLFluff SQLite contracts
+        entry: poetry run sqlfluff lint
+        language: system
+        types: [sql]
+      - id: shellcheck
+        name: ShellCheck
+        entry: poetry run shellcheck
+        language: system
+        types: [shell]
+      - id: shfmt
+        name: Shell formatting
+        entry: poetry run shfmt -d -i 4
+        language: system
+        types: [shell]
+      - id: documentation-contents
+        name: README table of contents (maximum three layers)
+        entry: poetry run python scripts/documentation/contents.py
+        language: system
+        pass_filenames: false
+        files: '(^README\.md$|^scripts/documentation/)'
+      - id: actionlint
+        name: GitHub Actions contracts
+        entry: actionlint
+        language: system
+        pass_filenames: false
+        files: '^\.github/.*\.ya?ml$'

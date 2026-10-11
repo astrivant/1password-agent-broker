@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "principals": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "certificate_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "identity_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+          },
+          "identity_revision": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+          },
+          "run_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+            },
+            "uniqueItems": true,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "certificate_sha256",
+          "identity_id",
+          "identity_revision",
+          "run_id",
+          "operations"
+        ],
+        "additionalProperties": false
+      },
+      "maxProperties": 1000
+    },
+    "credentials": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "pattern": "^op://[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+/(?:[a-zA-Z0-9_-]+/)?[a-zA-Z0-9_-]+$"
+          },
+          "bootstrap_env": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,79}$"
+          }
+        },
+        "required": [
+          "reference",
+          "bootstrap_env"
+        ],
+        "additionalProperties": false
+      },
+      "maxProperties": 1000
+    },
+    "operations": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "credential": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https://[^\\s]+$",
+            "maxLength": 2048
+          },
+          "kind": {
+            "const": "health"
+          }
+        },
+        "required": [
+          "credential",
+          "url",
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "maxProperties": 1000
+    }
+  },
+  "required": [
+    "version",
+    "principals",
+    "credentials",
+    "operations"
+  ],
+  "additionalProperties": false
+}

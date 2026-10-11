@@ -1,0 +1,7 @@
+repository:
+  description: Let agents use approved 1Password-backed capabilities without receiving secret values.
+  homepage: https://github.com/astrivant/1password-agent-broker#try-it
+  topics: [1password, mcp, agents, security, python]
+  has_issues: true
+  has_wiki: false
+  delete_branch_on_merge: true

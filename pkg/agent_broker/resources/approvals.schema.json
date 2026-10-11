@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "propertyNames": {
+    "type": "string",
+    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "request_id": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+      },
+      "principal": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+      },
+      "operation": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+      },
+      "policy_sha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expires_at": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "revoked": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "request_id",
+      "principal",
+      "operation",
+      "policy_sha256",
+      "expires_at",
+      "revoked"
+    ],
+    "additionalProperties": false
+  },
+  "maxProperties": 1000
+}
