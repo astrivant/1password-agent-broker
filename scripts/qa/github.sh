@@ -17,7 +17,7 @@ gh api "repos/$repository/actions/permissions/workflow" |
     jq -e '.default_workflow_permissions == "read" and (.can_approve_pull_request_reviews | not)'
 gh api "repos/$repository/commits/main" --jq .commit.verification.verified | jq -e '. == true'
 gh secret list --repo "$repository" --json name | jq -e 'any(.[]; .name == "COSIGN_PRIVATE_KEY")'
-gh api "repos/$repository/actions/workflows/ci.yml" --jq .state | jq -e '. == "active"'
+gh api "repos/$repository/actions/workflows/ci.yml" --jq '.state == "active"' | jq -e '. == true'
 
 # Policy decisions remain explicit: display evidence without imposing a new protection rule.
 gh api "repos/$repository/branches/main" --jq '{branch: .name, protected}'
