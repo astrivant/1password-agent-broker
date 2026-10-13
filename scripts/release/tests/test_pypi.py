@@ -11,7 +11,7 @@ from email.message import Message
 from unittest.mock import patch
 from urllib.error import HTTPError
 
-from scripts.release.check_pypi import read_release, release_files, verify_files
+from scripts.release.check_pypi import PublicationPendingError, read_release, release_files, verify_files, verify_release
 
 
 class PublicationTests(unittest.TestCase):
@@ -93,3 +93,53 @@ class PublicationTests(unittest.TestCase):
         with patch("scripts.release.check_pypi.urlopen", return_value=io.BytesIO(json.dumps(payload).encode())) as request:
             self.assertEqual(read_release("0.1.0"), {"package.whl": "a" * 64})
             request.assert_called_once_with("https://pypi.org/pypi/1password-agent-broker/0.1.0/json", timeout=20)
+
+    def test_missing_metadata_converges_after_upload(self) -> None:
+        """
+        Reproduce an initially absent release becoming visible without changing its files.
+
+        Returns:
+            None: Missing metadata receives a bounded retry and matching files succeed.
+        """
+        expected = {"package.whl": "a" * 64}
+        with (
+            patch("scripts.release.check_pypi.read_release", side_effect=[{}, expected]) as request,
+            patch("scripts.release.check_pypi.time.sleep") as pause,
+        ):
+            verify_release(expected, "0.1.0", allow_missing=False)
+            self.assertEqual(request.call_count, 2)
+            pause.assert_called_once_with(2)
+
+    def test_visibility_wait_is_bounded(self) -> None:
+        """
+        Fail when absence persists rather than reporting a successful publication.
+
+        Returns:
+            None: Exhausted visibility retries remain a failure.
+        """
+        with (
+            patch("scripts.release.check_pypi.read_release", return_value={}) as request,
+            patch("scripts.release.check_pypi.time.sleep") as pause,
+            self.assertRaises(PublicationPendingError),
+        ):
+            try:
+                verify_release({"package.whl": "a" * 64}, "0.1.0", allow_missing=False)
+            finally:
+                self.assertEqual(request.call_count, 6)
+                self.assertEqual(sum(call.args[0] for call in pause.call_args_list), 60)
+
+    def test_changed_files_are_not_retried(self) -> None:
+        """
+        Keep an immutable-file contradiction out of the eventual-visibility retry path.
+
+        Returns:
+            None: A digest mismatch fails on the first observation.
+        """
+        with (
+            patch("scripts.release.check_pypi.read_release", return_value={"package.whl": "b" * 64}) as request,
+            patch("scripts.release.check_pypi.time.sleep") as pause,
+        ):
+            with self.assertRaises(ValueError):
+                verify_release({"package.whl": "a" * 64}, "0.1.0", allow_missing=False)
+            request.assert_called_once()
+            pause.assert_not_called()

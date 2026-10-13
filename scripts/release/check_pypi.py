@@ -8,9 +8,16 @@ import argparse
 import hashlib
 import json
 import re
+import time
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import urlopen
+
+
+class PublicationPendingError(ValueError):
+    """
+    Indicate missing registry files without accepting a contradictory file identity.
+    """
 
 
 def release_files(payload: object) -> dict[str, str]:
@@ -81,13 +88,46 @@ def verify_files(expected: dict[str, str], published: dict[str, str], *, allow_m
         None: The observed release satisfies the selected publication phase.
 
     Raises:
-        ValueError: Files are unexpected, changed, or missing after publication.
+        ValueError: Files are unexpected or changed.
+        PublicationPendingError: Expected files are not yet visible after publication.
     """
     for name, digest in published.items():
         if expected.get(name) != digest:
             raise ValueError(f"PyPI file does not match the verified release: {name}")
     if not allow_missing and expected != published:
-        raise ValueError("PyPI is missing verified release files")
+        raise PublicationPendingError("PyPI is missing verified release files")
+
+
+def verify_release(expected: dict[str, str], version: str, *, allow_missing: bool) -> None:
+    """
+    Bound the wait for registry metadata visibility after a successful upload.
+
+    Args:
+        expected (dict[str, str]): Independently authenticated filenames and hashes.
+        version (str): Exact release version to query.
+        allow_missing (bool): Whether this is the pre-upload compatibility check.
+
+    Returns:
+        None: Registry files satisfy the selected publication phase.
+
+    Raises:
+        PublicationPendingError: Missing files remain after sixty seconds of backoff.
+        ValueError: Registry identity contradicts the verified release.
+        HTTPError: The registry request failed for a reason other than absence.
+    """
+    delays = (0, 2, 4, 8, 16, 30)
+    for attempt, delay in enumerate(delays):
+        if delay:
+            time.sleep(delay)
+        try:
+            verify_files(expected, read_release(version), allow_missing=allow_missing)
+        except PublicationPendingError:
+            # A newly uploaded release can outpace public metadata; mismatches must never enter this retry path.
+            if attempt == len(delays) - 1:
+                raise
+            print("Waiting for PyPI release metadata to become visible", flush=True)
+        else:
+            return
 
 
 def main() -> None:
@@ -108,7 +148,7 @@ def main() -> None:
     if {path.name for path in args.directory.iterdir()} != names:
         parser.error("Expected exactly the selected release's wheel and source distribution")
     expected = {name: hashlib.sha256((args.directory / name).read_bytes()).hexdigest() for name in names}
-    verify_files(expected, read_release(args.version), allow_missing=args.allow_missing)
+    verify_release(expected, args.version, allow_missing=args.allow_missing)
     print("PyPI file identity verified" if not args.allow_missing else "PyPI upload preflight passed")
 
 
