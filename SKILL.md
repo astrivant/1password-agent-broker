@@ -13,7 +13,9 @@ Use `agent-broker demo` to verify the synthetic two-identity workflow. It create
 
 ## Existing deployment
 
-Use the operator-provided MCP command and request identifiers. Call `execute_approved` with exactly `request_id`, `operation`, and `approval_id`. Retry the same IDs only to recover a recorded result. Treat `uncertain` as unresolved work requiring inspection, not authorization to create a new request. Use `cancel_approved` for cooperative cancellation.
+Use the operator-provided MCP command and request identifiers. Call `execute_approved` with exactly `request_id`, `operation`, and `approval_id`. Use `inspect_approved` with those same identifiers to recover existing state without execution authority, including after approval expiry. Treat `uncertain` as unresolved work requiring inspection, not authorization to create a new request. Use `cancel_approved` for cooperative cancellation; after submission it returns uncertainty or an already recorded outcome.
+
+Identity, revision, run, and optional task attribution come from operator policy and verified certificates. A conversational identity switch does not change the MCP certificate or broker permissions. Have the operator bind a separate workload/run when changing identity; never supply attribution in tool arguments. Retiring a workload removes its certificate mapping. Existing ledger records remain available to the operator.
 
 Operator actions such as creating grants, changing policies, mounting tokens, issuing certificates, or accessing real vaults require explicit user authorization. Never request or print secret values. A user's permission to run the synthetic demo does not authorize those actions.
 
@@ -21,4 +23,4 @@ Operator actions such as creating grants, changing policies, mounting tokens, is
 
 Keep identity claims bound to verified certificates. Do not bypass policy, approval, audit, or durable replay checks to fix an integration. Extend a named capability through models, JSON schemas, provider/executor interfaces, documentation, and meaningful regressions.
 
-Before publication, run focused tests, full relevant pre-commit checks, and the synthetic demo. CI is the hosted check; do not describe local tests as hosted success. Preserve pending requests and records needed for safe recovery. Record verified implementation findings in [RFC #8](https://github.com/astrivant/product-research/pull/8) when its scope changes.
+Before publication, run focused tests, full relevant pre-commit checks, and the synthetic demo. CI is the hosted check; do not describe local tests as hosted success. Preserve pending requests and records needed for safe recovery. Maintain the local [RFC review](docs/rfc-review.md) against [restaged RFC #55](https://github.com/astrivant/product-research/pull/55), keeping historical RFC #8 evidence separate from current validation. Posting review comments requires user authorization.

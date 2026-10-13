@@ -169,7 +169,7 @@ class BrokerHandler(BaseHTTPRequestHandler):
         result = Result("denied", "invalid_request")
         try:
             lengths = self.headers.get_all("Content-Length", [])
-            if self.path not in ("/execute", "/cancel") or len(lengths) != 1 or self.headers.get("Transfer-Encoding"):
+            if self.path not in ("/execute", "/cancel", "/status") or len(lengths) != 1 or self.headers.get("Transfer-Encoding"):
                 raise Rejected("Invalid framing")
             if self.headers.get_content_type() != "application/json" or not lengths[0].isdigit():
                 raise Rejected("Invalid framing")
@@ -182,7 +182,9 @@ class BrokerHandler(BaseHTTPRequestHandler):
             if certificate is None:
                 raise Rejected("Unauthenticated")
             body = json.loads(self.rfile.read(length))
-            result = self.server.broker.handle(hashlib.sha256(certificate).hexdigest(), body, cancel=self.path == "/cancel")
+            result = self.server.broker.handle(
+                hashlib.sha256(certificate).hexdigest(), body, cancel=self.path == "/cancel", inspect=self.path == "/status"
+            )
         except (Rejected, ValueError, OSError):
             pass
         payload = encode(data(result))
@@ -224,20 +226,26 @@ class Client:
         self.context.minimum_version = ssl.TLSVersion.TLSv1_3
         self.context.load_cert_chain(cert, key)
 
-    def call(self, raw: object, *, cancel: bool = False) -> Result:
+    def call(self, raw: object, *, cancel: bool = False, inspect: bool = False) -> Result:
         """
         Send once; a caller can retry the same UUID to recover a recorded result.
 
         Args:
             raw (object): Closed request payload.
             cancel (bool): Send to the cancellation endpoint.
+            inspect (bool): Read existing state through the status endpoint.
 
         Returns:
             Result: Validated server result or an explicit unknown transport outcome.
         """
         connection = HTTPSConnection(self.host, self.port, context=self.context, timeout=30)
         try:
-            connection.request("POST", "/cancel" if cancel else "/execute", body=encode(raw), headers={"Content-Type": "application/json"})
+            connection.request(
+                "POST",
+                "/status" if inspect else "/cancel" if cancel else "/execute",
+                body=encode(raw),
+                headers={"Content-Type": "application/json"},
+            )
             response = connection.getresponse()
             payload = response.read(4097)
             if response.status != 200 or len(payload) > 4096:

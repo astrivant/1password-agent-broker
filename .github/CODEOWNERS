@@ -1,0 +1,10 @@
+# Review routing for the maintained broker and its operating contracts.
+/pkg/agent_broker/ @emmeowzing
+/docs/architecture.md @emmeowzing
+/docs/operations.md @emmeowzing
+/docs/validation.md @emmeowzing
+/docs/rfc-review.md @emmeowzing
+/README.md @emmeowzing
+/SECURITY.md @emmeowzing
+/SKILL.md @emmeowzing
+/.github/CODEOWNERS @emmeowzing

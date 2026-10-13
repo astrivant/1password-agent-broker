@@ -146,7 +146,10 @@ def scenario(root: Path) -> Iterator[Scenario]:
 
     with running(destination):
         policy = Policy(
-            {name: Principal(fingerprints[name], name, "reviewed-v1", "demo-run", (f"{name}-health",)) for name in ("alpha", "bravo")},
+            {
+                name: Principal(fingerprints[name], name, "reviewed-v1", "demo-run", (f"{name}-health",), "demo-task")
+                for name in ("alpha", "bravo")
+            },
             {name: Credential(f"op://synthetic/{name}/token", "SYNTHETIC_UNUSED") for name in ("alpha", "bravo")},
             {f"{name}-health": Operation(name, f"https://127.0.0.1:{destination.server_port}/{name}") for name in ("alpha", "bravo")},
         )

@@ -21,13 +21,13 @@ Create `policy.json` below, replacing the fingerprint and synthetic identifiers.
       "identity_id": "reviewed-collection",
       "identity_revision": "reviewed-v1",
       "run_id": "run-001",
+      "task_id": "task-001",
       "operations": ["service-health"]
     }
   },
   "credentials": {
     "service-token": {
-      "reference": "op://vault-id/item-id/token",
-      "bootstrap_env": "OP_SERVICE_ACCOUNT_TOKEN"
+      "reference": "op://vault-id/item-id/token"
     }
   },
   "operations": {
@@ -41,6 +41,8 @@ Create `policy.json` below, replacing the fingerprint and synthetic identifiers.
 ```
 
 Initialize `approvals.json` with `{}` and restrict the directory to mode 0700 and private files to 0600. Keep it outside the checkout. Validate and start:
+
+Use opaque identity, run, and task IDs suitable for the operator's audit storage. `task_id` is optional for existing policies; omission means task attribution is unavailable. `identity_revision` should identify an immutable reviewed revision or snapshot digest. The broker trusts the operator's binding and does not verify the underlying knowledge collection. `bootstrap_env` defaults to the official `OP_SERVICE_ACCOUNT_TOKEN` variable; an explicit selector is available for separate broker-held service accounts.
 
 ```sh
 agent-broker config lint --policy /private/broker/policy.json --approvals /private/broker/approvals.json
@@ -81,16 +83,25 @@ args = ["mcp", "--url", "https://broker.example:8443", "--ca", "/agent/ca.pem", 
 
 No OpenAI API key is required by the broker. The MCP process must run without provider tokens and without access to the operator's files. Its workload private key is still an authority-bearing credential; scope and protect it accordingly.
 
-Both tools return a structured `Result`: `state`, `code`, `status_code`, `replayed`, and `audit_warning`. Non-healthy outcomes are MCP tool errors. No remote body, header, vault value, or provider diagnostic is returned.
+All three tools return a structured `Result`: `state`, `code`, `status_code`, `replayed`, and `audit_warning`. Non-healthy outcomes are MCP tool errors. No remote body, header, vault value, or provider diagnostic is returned.
+
+`inspect_approved` uses the same closed request schema and reads an existing reservation only. It never calls a credential provider, reserves work, or sends a destination request. Its result remains available after the grant expires or is revoked, and after the capability is removed from policy, provided the certificate, principal name, identity revision, run, and task binding remain unchanged. Unknown requests and mismatched bindings return `denied`.
+
+Changing a conversational identity has no effect on the broker's certificate. Select an operator-provisioned workload for the intended identity/run. Removing its policy entry revokes both execution and recovery access; retain the ledger for operator investigation. Changing an identity revision, task, run, or certificate does not transfer old recovery authority to the replacement.
 
 ## Rotation, revocation, and recovery
 
 - **Rotate a service credential:** update it in 1Password. The next approved request resolves the new value; the broker does not cache credentials.
 - **Revoke a grant:** set `revoked` to true or remove it from `approvals.json`. This blocks requests that have not passed the final authorization check.
 - **Revoke a workload:** remove its certificate mapping from policy. Issue new approvals after any policy edit, because the policy hash changed.
-- **Cancel:** send the same request object to `cancel_approved`. Before submission it stops work. After submission it cannot undo the remote operation.
-- **Uncertain result:** inspect the target and durable ledger. Repeating the same UUID will not execute again. Only an operator can decide whether a new approved request is appropriate.
+- **Cancel:** send the same request object to `cancel_approved`. Before submission it stops work. After the durable submission boundary it returns `uncertain`; if the outcome was already recorded, it returns that outcome. A cancellation acknowledgement never promises remote rollback.
+- **Recover a lost response:** send the same request object to `inspect_approved`, even after its approval expires. Execution through `execute_approved` still requires current policy and a valid grant.
+- **Uncertain result:** inspect the target and durable ledger. `inspect_approved` preserves uncertainty for pending requests. Only an operator can decide whether a new approved request is appropriate.
 - **Restart:** reuse the same ledger. Deleting it or restoring a stale copy can remove replay protection.
 - **Shutdown:** SIGINT/SIGTERM closes admission and drains bounded handlers. Force termination leaves durable pending reservations for inspection.
 
 The broker does not retry provider or destination operations automatically. A failed provider result is replayable; after repairing the provider, issue a new reviewed grant. This avoids confusing transient transport failure with permission to repeat a remote side effect.
+
+## Existing ledger upgrade
+
+Startup adds an independent `request_context` table without changing or deleting existing reservations or audit events. New reservations include a recovery binding and submission marker. Legacy reservations lack this evidence, so `inspect_approved` denies them. Their original execution replay checks still apply; cancelling a pending legacy reservation returns uncertainty. Use the operator ledger and destination evidence to reconcile legacy work. Do not delete reservations to enable recovery, and do not downgrade while requests are active: older brokers do not maintain the new submission marker.

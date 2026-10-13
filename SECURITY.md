@@ -10,6 +10,8 @@ The broker process, its OS account, policy and approval files, certificate autho
 
 The broker uses mTLS certificate fingerprints, not client-provided identity claims. It validates closed request schemas and resolves only an exact operator-selected field. Grants bind an operation, request UUID, principal, expiry, and canonical policy hash. Policy changes invalidate outstanding grants. A second authority check after credential resolution catches revocation during that lookup; cancellation or revocation racing an already submitted request cannot undo it.
 
+Read-only result inspection and cancellation of existing work use a separate exact-request and identity snapshot binding. They remain available after grant expiry or capability removal while the original principal, certificate, identity revision, run, and task are still configured. Neither operation grants execution authority. Removing the principal revokes recovery too. Conversational identity names or mode switches do not alter certificate authority. Legacy ledger records without recovery evidence remain subject to their original replay checks and operator reconciliation.
+
 The implemented operation is an HTTPS GET with a bearer token. The endpoint is fixed by policy, certificate validation is required, redirects are not followed, and ambient HTTP proxies are ignored. Operators must trust the selected destination and protect its DNS and certificate authority. This is not a general-purpose SSRF proxy or a network sandbox.
 
 ## Sensitive data lifecycle

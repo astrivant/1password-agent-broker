@@ -26,8 +26,21 @@ The tests exercise real local HTTPS/mTLS and an actual MCP 2 stdio subprocess. S
 | Redaction | Generated canaries absent from results, MCP output/stderr, command arguments, and the SQLite audit file. |
 | Packaging | Wheel contains JSON schemas and SQL; container and installed CLI run the synthetic demo. |
 | Release integrity | Temporary key generation, Cosign 3 bundle creation/verification, and package checksums; GitHub calls replaced by a local stub. |
+| Identity/task attribution | Known callers remain attributable on denials; client metadata is rejected; task IDs are operator-owned. |
+| Result inspection | Existing outcomes survive grant expiry/removal and capability removal; identity, revision, run, task, and request changes cannot inherit recovery authority. |
+| Submission cancellation | SQLite submission admission races cancellation safely; an in-flight operation returns uncertainty and is not submitted twice. |
+| Audit contract | Closed producer schema, terminal replay outcomes, isolated exporter attributes, and recoverable results after terminal audit failure. |
+| Existing ledgers | Context-table creation preserves legacy reservations; unknown historical submission state is not inferred. |
 
 A canary check verifies specific output channels. It is not a proof that secrets are absent from all operating-system memory, swap, core dumps, or external services. No real 1Password account, OpenAI account, provider API, or production destination is used in these tests.
+
+## RFC #55 local review evidence
+
+On 2026-10-13, the updated implementation passed 59 tests with four workers on Python 3.12.8, including real HTTPS/mTLS, an MCP stdio subprocess, and deterministic cancellation coordination. Measured line coverage was 77%; subprocess execution is exercised but is not included in that coverage measurement. The synthetic demo completed both approved operations, denied cross-identity and extra-field requests, replayed without resubmission, and made zero external provider calls.
+
+All repository pre-commit hooks passed, including strict typing, docstring contracts, SQL, shell, and workflow validation. Wheel and source-distribution builds passed. The wheel was installed into a temporary target outside the checkout; its imported package location was verified and its demo passed using the locked runtime dependencies. Containers, the hosted Python matrix, Trivy, and a newly signed release were not run for this review.
+
+The [review record](rfc-review.md) maps the implementation to the restaged RFC and identifies remaining integration gates. These are local results. Historical hosted and release evidence below does not validate this revision; live provider permissions and deployment isolation remain untested.
 
 ## Hosted checks
 

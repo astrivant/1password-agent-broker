@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "time_unix_nano": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "observed_time_unix_nano": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "severity_number": {
+      "const": 9
+    },
+    "severity_text": {
+      "const": "INFO"
+    },
+    "body": {
+      "enum": [
+        "requested",
+        "allowed",
+        "attempted",
+        "completed",
+        "denied",
+        "failed",
+        "uncertain",
+        "cancelled"
+      ]
+    },
+    "attributes": {
+      "type": "object",
+      "properties": {
+        "principal": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "identity.id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "identity.revision": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "run.id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "task.id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "operation": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "approval.id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "credential.alias": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+        },
+        "request.id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$"
+        },
+        "policy.sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "trace.id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "span.id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{16}$"
+        },
+        "destination.class": {
+          "const": "https-health"
+        },
+        "action": {
+          "enum": [
+            "execute",
+            "cancel",
+            "status"
+          ]
+        },
+        "result.code": {
+          "enum": [
+            "healthy",
+            "unhealthy",
+            "denied",
+            "invalid_request",
+            "provider_failed",
+            "unknown",
+            "cancelled",
+            "audit_failed"
+          ]
+        },
+        "result.replayed": {
+          "type": "boolean"
+        },
+        "result.status_code": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        }
+      },
+      "additionalProperties": false
+    },
+    "resource": {
+      "const": {
+        "attributes": {
+          "service.name": "1password-agent-broker"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "time_unix_nano",
+    "observed_time_unix_nano",
+    "severity_number",
+    "severity_text",
+    "body",
+    "attributes",
+    "resource"
+  ]
+}
