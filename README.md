@@ -6,7 +6,7 @@ Let agents use credentials without handing them the keys. Approve a capability, 
 
 **Contents**
 
-<!-- toc -->
+<!-- TOC -->
 
 - [Quick start](#quick-start)
   - [Install and try it](#install-and-try-it)
@@ -27,7 +27,7 @@ Let agents use credentials without handing them the keys. Approve a capability, 
   - [Development and releases](#development-and-releases)
 - [Kubernetes and monitoring](#kubernetes-and-monitoring)
 
-<!-- /toc -->
+<!-- /TOC -->
 
 ## Quick start
 

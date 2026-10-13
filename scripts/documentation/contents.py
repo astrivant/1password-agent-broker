@@ -33,8 +33,14 @@ def contents(source: str) -> str:
         level, title = match.groups()
         anchor = re.sub(r"[^a-z0-9 -]", "", title.lower()).replace(" ", "-")
         rows.append(f"{'  ' * (len(level) - 2)}- [{title}](#{anchor})")
-    generated = "<!-- toc -->\n\n" + "\n".join(rows) + "\n\n<!-- /toc -->"
-    result, count = re.subn(r"<!-- toc -->.*?<!-- /toc -->", generated, source, flags=re.DOTALL)
+    # Editors may capitalize TOC markers; retain their spelling while updating only generated navigation.
+    generated = "\n\n" + "\n".join(rows) + "\n\n"
+    result, count = re.subn(
+        r"(<!-- toc -->).*?(<!-- /toc -->)",
+        lambda match: match[1] + generated + match[2],
+        source,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
     if count != 1:
         raise ValueError("README must have one TOC marker pair")
     return result
