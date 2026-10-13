@@ -5,7 +5,7 @@ image:
   ## @param image.repository Replace with your operator-published, verified broker image
   repository: registry.example/team/1password-agent-broker
   ## @param image.tag Release tag matching the verified image; a private overlay may set image.digest
-  tag: "0.1.1"
+  tag: "0.2.0"
 
 ## @section Client and monitoring access
 networkPolicy:

@@ -7,7 +7,15 @@ description: Develop, validate, and operate approved credential-backed capabilit
 
 Read [SECURITY.md](SECURITY.md) and [operations](docs/operations.md) before introducing real credentials. Follow [development](docs/development.md) for the locked environment and checks.
 
-## Start from current guidance
+## Use without a source checkout
+
+The [public skill](https://github.com/astrivant/1password-agent-broker/blob/main/SKILL.md) can be read without cloning this repository. Resolve its relative documentation links within the same repository and revision. `main` follows development; use the matching release tag or source revision when checking version-specific behavior.
+
+The published package provides the demo, broker server, and MCP adapter without a source checkout. On a host with Python 3.12+ excluding 3.14.1, follow the [quick start](README.md#install-and-try-it) to install it and run `agent-broker demo`. The demo runs on that host. For an existing deployment, the host running the stdio MCP adapter needs the installed package, broker network access, and operator-provided configuration and workload certificates. Reading this URL alone does not connect an agent to a broker; follow [MCP setup](docs/operations.md#mcp-configuration).
+
+Source edits, repository hooks and scripts, container builds, and chart development require a local checkout and the [development prerequisites](docs/development.md). Installing an already verified release chart archive does not require a clone; follow the [chart operations](helm/1password-agent-broker/README.md#operation). Select the workflow for the task before requesting a checkout.
+
+## Start source work from current guidance
 
 Inspect the worktree, index, remote branch and current PR before editing. Fetch the intended remote, review incoming changes, and fast-forward when possible. Preserve user edits and published history; resolve divergence from both sides' intended behavior rather than resetting or force-pushing.
 

@@ -44,7 +44,7 @@ The local demo reports two healthy operations, successful replay protection, cro
 
 ### Use with an AI agent
 
-Point your agent at [SKILL.md](SKILL.md) for the supported setup, validation, and operating procedures. Once a broker is configured, the [MCP setup](docs/operations.md#mcp-configuration) connects an agent through the Model Context Protocol (MCP), using its workload certificate.
+Point your agent at the local [SKILL.md](SKILL.md) or its [public URL](https://github.com/astrivant/1password-agent-broker/blob/main/SKILL.md) for supported setup, validation, and operating procedures. The skill explains package use without a source checkout and which development workflows require one. Once a broker is configured, the [MCP setup](docs/operations.md#mcp-configuration) connects an agent through the Model Context Protocol (MCP), using its workload certificate.
 
 ## Why use this tool?
 
@@ -152,7 +152,7 @@ These inputs are for package maintainers, not broker deployments. The workflow u
 
 - [Development](docs/development.md): local checks, containers, and pinned tools.
 - [Signed releases](docs/development.md#release-signing): key setup, publishing, and artifact verification.
-- [Contributing](CONTRIBUTING.md) and [agent instructions](SKILL.md).
+- [Contributing](CONTRIBUTING.md) and [agent instructions](SKILL.md) ([public URL](https://github.com/astrivant/1password-agent-broker/blob/main/SKILL.md)).
 - [Current RFC review](docs/rfc-review.md): implemented gaps, evidence, and remaining integration gates for [RFC #55](https://github.com/astrivant/product-research/pull/55).
 
 This is an independent Astrivant project using 1Password's official SDK. It is not an official 1Password product.
