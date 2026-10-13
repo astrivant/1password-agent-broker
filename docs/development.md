@@ -30,6 +30,12 @@ Review comments alongside implementation and tests so they describe observed beh
 
 SQLite transaction behavior is configured through the driver's `IMMEDIATE` isolation level. Reservation is an atomic `INSERT ... ON CONFLICT DO NOTHING` followed by a read in that write transaction. SQL remains in packaged `.sql` files and is linted independently.
 
+### CODEOWNERS validation
+
+The `codeowners` hook runs [codeowners-validator v0.7.4](https://github.com/mszostok/codeowners-validator/tree/7f3f5e28c6d7b8dfae5731e54ce2272ca384592f) against the complete ownership file on every invocation, including changes that delete or rename owned paths. It rejects malformed owner syntax, duplicate patterns, and patterns matching no files. The hook pins its source commit and Go 1.27.2 in `.pre-commit-config.yaml`; pre-commit downloads and builds the isolated tool environment on first use, then reuses its cache. No system Go installation is required.
+
+Run `poetry run pre-commit run codeowners --all-files` for the focused check. CI runs it through the same all-files pre-commit command. These checks need no GitHub token after installation. Owner existence, team membership and repository permissions require a separate hosted review; this offline hook does not establish review eligibility or require every file to have an owner. Preserve intended last-match precedence when changing rules.
+
 ## Layout
 
 | Path | Responsibility |
