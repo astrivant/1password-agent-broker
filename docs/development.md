@@ -56,7 +56,17 @@ The SDK is pinned to 0.4.1 in `pyproject.toml` and `poetry.lock`. Its published 
 
 ## CI and pinned tools
 
-Lint, Python-version tests, package/container verification, and security scanning start independently. Only release publication waits for all of them. A coverage leaf job reads the Python 3.14 report after both test versions pass and publishes a Shields endpoint payload to the `coverage` branch through GitHub's signed Contents API. Unchanged percentages create no commit; obsolete main runs skip publication. The README badge shows measured line coverage, not general CI status. Python virtual environments are cached by OS, architecture, exact Python version, and lock/metadata hashes. Trivy's vulnerability database uses a six-hour cache window; scan results are never cached as if they were current.
+### Pull request merge policy
+
+The [repository settings](../.github/settings.yml) declare protection for `main`: one independent approval, stale-approval dismissal, resolved review conversations, and an up-to-date branch with a successful `PR quality gate` from GitHub Actions. The gate joins lint, both Python test versions, package/container checks, chart checks, the synthetic release contract, and security scanning. Its `always()` condition exposes failed or skipped prerequisites; every required result must be `success`. Tag-only publication and main-only coverage jobs are excluded. The required check name remains stable when the Python matrix changes.
+
+Administrators retain GitHub's protection bypass. An agent may use it only with explicit maintainer approval for the particular merge and after all required CI checks pass; record that approval and the tested revision in the PR. This is an operating rule: GitHub's administrator bypass can also bypass status checks. With a single eligible reviewer, author-created PRs need another eligible reviewer or an explicitly approved administrator override. CODEOWNERS routes review but does not itself supply independent approval.
+
+The [Settings app](https://github.com/repository-settings/app/blob/master/docs/configuration.md) applies this file only when configured for the repository and the change reaches the default branch. Otherwise an authorized repository administrator must apply the equivalent [branch-protection API policy](https://docs.github.com/en/rest/branches/branch-protection#update-branch-protection). Register and verify the new gate on a PR before requiring it, then run `bash scripts/qa/github.sh astrivant/1password-agent-broker` to check actual host state. Update older PR branches after the workflow merges so they produce the required gate. The QA command is read-only and fails when protection is absent or differs from this baseline.
+
+### Validation graph and tool versions
+
+Lint, Python-version tests, package/container verification, chart checks, and security scanning start independently. The merge gate and release publication join their required results. A coverage leaf job reads the Python 3.14 report after both test versions pass and publishes a Shields endpoint payload to the `coverage` branch through GitHub's signed Contents API. Unchanged percentages create no commit; obsolete main runs skip publication. The README badge shows measured line coverage, not general CI status. Python virtual environments are cached by OS, architecture, exact Python version, and lock/metadata hashes. Trivy's vulnerability database uses a six-hour cache window; scan results are never cached as if they were current.
 
 Pins outside Poetry's lockfile:
 

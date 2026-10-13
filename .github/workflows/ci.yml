@@ -41,6 +41,7 @@ jobs:
           sha256sum --check --ignore-missing "actionlint_${ACTIONLINT_VERSION}_checksums.txt"
           tar -xzf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" actionlint
           echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+      - run: poetry run pytest -n 2 scripts/ci/tests
       - run: poetry run pre-commit run --all-files
       - run: poetry run python scripts/documentation/contents.py --check
       - run: git diff --exit-code
@@ -195,6 +196,19 @@ jobs:
           name: redacted-security-results
           path: artifacts/security/security.json
           if-no-files-found: warn
+  # A stable required check joins every PR validation without serializing its producers.
+  quality-gate:
+    name: PR quality gate
+    needs: [lint, tests, package, charts, release-contract, security]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Require every validation job to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: bash scripts/ci/checks/quality-gate.sh
   release:
     needs: [lint, tests, package, charts, release-contract, security]
     if: >-

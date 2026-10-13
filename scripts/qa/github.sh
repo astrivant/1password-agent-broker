@@ -19,8 +19,19 @@ gh api "repos/$repository/commits/main" --jq .commit.verification.verified | jq 
 gh secret list --repo "$repository" --json name | jq -e 'any(.[]; .name == "COSIGN_PRIVATE_KEY")'
 gh api "repos/$repository/actions/workflows/ci.yml" --jq '.state == "active"' | jq -e '. == true'
 
-# Policy decisions remain explicit: display evidence without imposing a new protection rule.
-gh api "repos/$repository/branches/main" --jq '{branch: .name, protected}'
+# Require the declared PR policy on the host; metadata alone must not pass acceptance.
+gh api "repos/$repository/branches/main/protection" |
+    jq -e '.required_status_checks.strict
+        and (.required_status_checks.checks == [{"context": "PR quality gate", "app_id": 15368}])
+        and (.required_pull_request_reviews.required_approving_review_count == 1)
+        and .required_pull_request_reviews.dismiss_stale_reviews
+        and (.required_pull_request_reviews.require_code_owner_reviews | not)
+        and (.enforce_admins.enabled | not)
+        and .required_conversation_resolution.enabled
+        and (.allow_force_pushes.enabled | not)
+        and (.allow_deletions.enabled | not)
+        and (.required_linear_history.enabled | not)
+        and (.restrictions == null)'
 gh api "repos/$repository/rulesets" --jq '[.[] | {name,enforcement}]'
 
 if [[ $# == 2 ]]; then

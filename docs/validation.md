@@ -67,14 +67,15 @@ Use this inventory when adding or changing a delivery path. Record the source re
 | Containers | Production and development builds; non-root, Tini, restricted runtime, and demo/test execution. |
 | Main and PR triggers | Push and pull-request events in CI; record the actual run rather than assuming one event tests the other. |
 | Security | Trivy vulnerability/secret scan, redacted reports, and documented trust boundaries. |
-| Host configuration | `bash scripts/qa/github.sh OWNER/REPO`: actual metadata, Actions enablement, read-only default token, signing verification, signing-secret presence, and active workflow. Branch protection and rulesets are reported for operator review. |
+| Host configuration | `bash scripts/qa/github.sh OWNER/REPO`: actual metadata, Actions enablement, read-only default token, signing verification, signing-secret presence, active workflow, and enforced PR/CI protection with the documented administrator override. |
+| Merge gate | `poetry run pytest -n 2 scripts/ci/tests`: successful prerequisites, failure/cancellation/skip rejection, malformed or incomplete results, and workflow/settings alignment. |
 | Coverage publication | Main run publishes the measured report; read back the badge payload and confirm its commit is verified. |
 | Signed release | A real tag run publishes artifacts; `bash scripts/qa/github.sh OWNER/REPO TAG` checks attachment completeness. Independently authenticate the signature, verify checksums, and test the downloaded wheel as described in [release signing](development.md#release-signing). |
 | Signing setup recovery | `bash scripts/ci/checks/signing.sh`: real temporary Cosign keys, local host stub, partial-upload retries, unchanged key/password, repository binding and refusal of invalid or incomplete backups. |
 | Consumer upgrades | After an authorized release, record known consumer version-update PRs and passing current-revision pipelines. No external consumer inventory is verified here; see [follow-through](development.md#downstream-consumers). |
 | Live provider/deployment | Operator-authorized integration with real account permissions and infrastructure; synthetic CI does not cover this. |
 
-GitHub metadata is declared in `.github/settings.yml`; verify the host after applying it because the file has no effect without a settings integration. The audit script uses authenticated `gh` and `jq`, reads secret names only, and never retrieves secret values. It reports policy state without silently changing protection rules. Coverage publication is a leaf job and writes only its derived branch, so it cannot cause recursive main builds.
+GitHub settings are declared in `.github/settings.yml`; verify the host after applying them because the file has no effect without a settings integration. The audit script uses authenticated `gh` and `jq`, reads secret names only, and never retrieves secret values. It checks the [declared merge policy](development.md#pull-request-merge-policy) without changing protection rules. Coverage publication is a leaf job and writes only its derived branch, so it cannot cause recursive main builds.
 
 ## Initial release evidence
 

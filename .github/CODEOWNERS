@@ -12,6 +12,7 @@
 /poetry.lock @emmeowzing
 /Dockerfile @emmeowzing
 /.github/workflows/ci.yml @emmeowzing
+/.github/settings.yml @emmeowzing
 /.github/CODEOWNERS @emmeowzing
 /helm/ @emmeowzing
 /scripts/helm/ @emmeowzing
@@ -31,6 +32,8 @@
 /scripts/release/__init__.py @emmeowzing
 /scripts/__init__.py @emmeowzing
 /scripts/ci/checks/security.sh @emmeowzing
+/scripts/ci/checks/quality-gate.sh @emmeowzing
+/scripts/ci/tests/ @emmeowzing
 /scripts/ci/checks/trivy_report.py @emmeowzing
 /scripts/qa/github.sh @emmeowzing
 /.github/dependabot.yml @emmeowzing

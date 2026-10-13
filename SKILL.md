@@ -43,6 +43,8 @@ Build HTTP routes through `APIBuilder` and attach metrics with `MetricsBuilder` 
 
 ## Publication and follow-through
 
+Maintain `.github/settings.yml` and the [PR merge policy](docs/development.md#pull-request-merge-policy) together. Normal merges require one independent approval and the stable `PR quality gate`, covering every required CI producer. Verify host protection with `scripts/qa/github.sh`; a committed settings file does not establish enforcement. Administrator bypass requires explicit maintainer approval for that merge and passing CI. Do not infer override permission from the ability to administer the repository.
+
 Use signed commits and verify the pushed revision on the host. Keep the PR body current with the purpose, behavior, compatibility constraints, exact validation revision, and next review action. Give a brief contributor/contact note, and distinguish authorship, publishing and approval. Read review notes before acting on an ambiguous hold; consult the responsible maintainer when those notes do not resolve it.
 
 Follow [release signing](docs/development.md#release-signing) for explicit key setup, exact artifact selection and downloaded-release verification. A tag or successful build alone is not a verified release. Do not merge, deploy, rotate keys or create credentials merely to complete a source review.
