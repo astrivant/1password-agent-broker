@@ -29,10 +29,10 @@ Let agents use credentials without handing them the keys. Approve a capability, 
 
 ### Install and try it
 
-Requires Python 3.12 or newer, excluding 3.14.1, and Git. No 1Password account, model API key, or cloud infrastructure is needed for the demo.
+Requires Python 3.12 or newer, excluding 3.14.1. No 1Password account, model API key, or cloud infrastructure is needed for the demo.
 
 ```sh
-python -m pip install 'git+https://github.com/astrivant/1password-agent-broker.git'
+python -m pip install 1password-agent-broker
 agent-broker demo
 ```
 

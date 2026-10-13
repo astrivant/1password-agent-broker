@@ -45,6 +45,8 @@ Use signed commits and verify the pushed revision on the host. Keep the PR body 
 
 Follow [release signing](docs/development.md#release-signing) for explicit key setup, exact artifact selection and downloaded-release verification. A tag or successful build alone is not a verified release. Do not merge, deploy, rotate keys or create credentials merely to complete a source review.
 
+Every Python package has a PyPI publication run. This project's CI publishes its already authenticated Python release archives with the organization's existing `PYPI_API_TOKEN`, then compares PyPI file digests and runs the installed demo outside the checkout. Follow [PyPI publication](docs/development.md#pypi-publication) for release retries and first publication; preserve immutable tag and artifact bytes. An existing GitHub release is not evidence that a package is available on PyPI.
+
 After an authorized release, promptly open upgrade PRs for known downstream consumers and follow their current-revision pipelines through success. Include installation paths and lockfiles in dependency updates; fix ordinary upgrade failures and recheck the new revision. Keep missing access, compatibility blockers and user-owned handoffs explicit. See [consumer follow-through](docs/development.md#downstream-consumers). An explicit request that the user will watch CI takes precedence; PR creation does not imply merge authority.
 
 Before handing work back, review applicable project contracts with actual evidence, exclusions and remaining actions. Preserve confirmed defects as concise regression-backed findings for future work. Report implementation, local validation, remote publication, hosted CI and deployment as separate outcomes.

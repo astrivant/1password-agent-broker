@@ -51,13 +51,27 @@ version=${version%-py3-none-any.whl}
     bash "$release_script"
     test -f "$GH_STUB_ASSETS/published"
     fingerprint=$(openssl pkey -pubin -in "$GH_STUB_ASSETS/cosign.pub" -outform DER 2>/dev/null | openssl dgst -sha256)
-    EXPECTED_RELEASE_KEY_FINGERPRINT="${fingerprint##* }" bash "$verify_script"
+    EXPECTED_RELEASE_KEY_FINGERPRINT="${fingerprint##* }" bash "$verify_script" verified-python
+    test "$(find verified-python -type f | wc -l | tr -d ' ')" = 2
+    cmp "dist/1password_agent_broker-$version-py3-none-any.whl" "verified-python/1password_agent_broker-$version-py3-none-any.whl"
+    cmp "dist/1password_agent_broker-$version.tar.gz" "verified-python/1password_agent_broker-$version.tar.gz"
+
+    # A reused output directory must fail rather than carry files from another publication attempt.
+    if EXPECTED_RELEASE_KEY_FINGERPRINT="${fingerprint##* }" bash "$verify_script" verified-python; then
+        echo 'Existing Python publication directory was accepted' >&2
+        exit 1
+    fi
 
     # A valid bundled key is insufficient unless it matches the independently supplied trust anchor.
     if EXPECTED_RELEASE_KEY_FINGERPRINT=untrusted bash "$verify_script"; then
         echo 'Untrusted signing key was accepted' >&2
         exit 1
     fi
+    if EXPECTED_RELEASE_KEY_FINGERPRINT=untrusted bash "$verify_script" untrusted-python; then
+        echo 'Untrusted Python distribution export was accepted' >&2
+        exit 1
+    fi
+    test ! -e untrusted-python
     rm "$GH_STUB_ASSETS/published"
 
     # Corruption must block the final publish action, not merely produce a diagnostic after publication.

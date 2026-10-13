@@ -24,6 +24,12 @@
 /.dockerignore @emmeowzing
 /scripts/release/verify.sh @emmeowzing
 /scripts/release/setup-signing.sh @emmeowzing
+/scripts/release/prepare-pypi.sh @emmeowzing
+/scripts/release/check_pypi.py @emmeowzing
+/scripts/release/check-install.sh @emmeowzing
+/scripts/release/tests/ @emmeowzing
+/scripts/release/__init__.py @emmeowzing
+/scripts/__init__.py @emmeowzing
 /scripts/ci/checks/security.sh @emmeowzing
 /scripts/ci/checks/trivy_report.py @emmeowzing
 /scripts/qa/github.sh @emmeowzing
