@@ -30,6 +30,12 @@ Review comments alongside implementation and tests so they describe observed beh
 
 SQLite transaction behavior is configured through the driver's `IMMEDIATE` isolation level. Reservation is an atomic `INSERT ... ON CONFLICT DO NOTHING` followed by a read in that write transaction. SQL remains in packaged `.sql` files and is linted independently.
 
+### CODEOWNERS validation
+
+The `codeowners` hook runs [codeowners-validator v0.7.4](https://github.com/mszostok/codeowners-validator/tree/7f3f5e28c6d7b8dfae5731e54ce2272ca384592f) against the complete ownership file on every invocation, including changes that delete or rename owned paths. It rejects malformed owner syntax, duplicate patterns, and patterns matching no files. The hook pins its source commit and Go 1.27.2 in `.pre-commit-config.yaml`; pre-commit downloads and builds the isolated tool environment on first use, then reuses its cache. No system Go installation is required.
+
+Run `poetry run pre-commit run codeowners --all-files` for the focused check. CI runs it through the same all-files pre-commit command. These checks need no GitHub token after installation. Owner existence, team membership and repository permissions require a separate hosted review; this offline hook does not establish review eligibility or require every file to have an owner. Preserve intended last-match precedence when changing rules.
+
 ## Layout
 
 | Path | Responsibility |
@@ -56,7 +62,17 @@ The SDK is pinned to 0.4.1 in `pyproject.toml` and `poetry.lock`. Its published 
 
 ## CI and pinned tools
 
-Lint, Python-version tests, package/container verification, and security scanning start independently. Only release publication waits for all of them. A coverage leaf job reads the Python 3.14 report after both test versions pass and publishes a Shields endpoint payload to the `coverage` branch through GitHub's signed Contents API. Unchanged percentages create no commit; obsolete main runs skip publication. The README badge shows measured line coverage, not general CI status. Python virtual environments are cached by OS, architecture, exact Python version, and lock/metadata hashes. Trivy's vulnerability database uses a six-hour cache window; scan results are never cached as if they were current.
+### Pull request merge policy
+
+The [repository settings](../.github/settings.yml) declare protection for `main`: one independent approval, stale-approval dismissal, resolved review conversations, and an up-to-date branch with a successful `PR quality gate` from GitHub Actions. The gate joins lint, both Python test versions, package/container checks, chart checks, the synthetic release contract, and security scanning. Its `always()` condition exposes failed or skipped prerequisites; every required result must be `success`. Tag-only publication and main-only coverage jobs are excluded. The required check name remains stable when the Python matrix changes.
+
+Administrators retain GitHub's protection bypass. An agent may use it only with explicit maintainer approval for the particular merge and after all required CI checks pass; record that approval and the tested revision in the PR. This is an operating rule: GitHub's administrator bypass can also bypass status checks. With a single eligible reviewer, author-created PRs need another eligible reviewer or an explicitly approved administrator override. CODEOWNERS routes review but does not itself supply independent approval.
+
+The [Settings app](https://github.com/repository-settings/app/blob/master/docs/configuration.md) applies this file only when configured for the repository and the change reaches the default branch. Otherwise an authorized repository administrator must apply the equivalent [branch-protection API policy](https://docs.github.com/en/rest/branches/branch-protection#update-branch-protection). Register and verify the new gate on a PR before requiring it, then run `bash scripts/qa/github.sh astrivant/1password-agent-broker` to check actual host state. Update older PR branches after the workflow merges so they produce the required gate. The QA command is read-only and fails when protection is absent or differs from this baseline.
+
+### Validation graph and tool versions
+
+Lint, Python-version tests, package/container verification, chart checks, and security scanning start independently. The merge gate and release publication join their required results. A coverage leaf job reads the Python 3.14 report after both test versions pass and publishes a Shields endpoint payload to the `coverage` branch through GitHub's signed Contents API. Unchanged percentages create no commit; obsolete main runs skip publication. The README badge shows measured line coverage, not general CI status. Python virtual environments are cached by OS, architecture, exact Python version, and lock/metadata hashes. Trivy's vulnerability database uses a six-hour cache window; scan results are never cached as if they were current.
 
 Pins outside Poetry's lockfile:
 

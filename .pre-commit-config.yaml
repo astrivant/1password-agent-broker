@@ -9,6 +9,16 @@ repos:
         always_run: true
   - repo: local
     hooks:
+      # Check the whole ownership map even when only a referenced path changes.
+      - id: codeowners
+        name: CODEOWNERS syntax and paths
+        entry: env REPOSITORY_PATH=. CHECKS=files,duppatterns,syntax EXPERIMENTAL_CHECKS= CHECK_FAILURE_LEVEL=warning codeowners-validator
+        language: golang
+        language_version: 1.27.2
+        additional_dependencies:
+          - github.com/mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4
+        pass_filenames: false
+        always_run: true
       - id: ruff
         name: Ruff lint
         entry: poetry run ruff check
