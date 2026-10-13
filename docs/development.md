@@ -92,7 +92,7 @@ If either upload fails, rerun the same command with the same directory. Existing
 
 Earlier helper versions used positional `OWNER/REPO DIRECTORY` arguments and an empty password. Use the explicit flags above for the same directory. If that older backup has no `cosign.password`, create an empty private file there only when the key's original password was empty; otherwise restore its actual password. This preserves the original signing identity. The helper does not rotate or recover lost keys.
 
-For a new project, exercise the first signed release with `v0.0.1` after hooks and main CI pass. For an existing release sequence, use its next compatible version; never move an existing tag. Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI packages the Helm archive alongside the tested wheel and source distribution, signs checksums including `SOURCE.txt`, and assembles a draft GitHub release. It downloads and verifies the complete attachment set before publishing. Interrupted drafts can be retried; published releases are never overwritten. Attachments include the archives, source/tag provenance, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
+For a new project, exercise the first signed release with `v0.0.1` after hooks and main CI pass. For an existing release sequence, use its next compatible version; never move an existing tag. Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI packages the Helm archive alongside the tested wheel and source distribution, signs checksums including `SOURCE.txt`, and assembles a draft GitHub release. It downloads and verifies the complete attachment set before publishing. Interrupted drafts can be retried; published releases are never overwritten. Attachments include the archives, source/tag provenance, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. PyPI publication follows verification of the GitHub release.
 
 Download all release files into one directory. Verify the public-key fingerprint against an independently trusted maintainer record, then:
 
@@ -108,6 +108,24 @@ A terminal tag job runs even if publication was skipped and verifies the complet
 Publication rejects missing, differently versioned or additional build archives before signing or creating a draft. Use a clean build output containing exactly the wheel, source distribution and Helm archive for the selected tag. `bash scripts/ci/checks/signing.sh` exercises setup and retry preservation offline; `bash scripts/ci/checks/release.sh` also requires those built archives and exercises signed publication through a local GitHub stub. CI runs both in the existing release-contract job.
 
 The initial upstream signing key fingerprint (SHA-256 of DER SubjectPublicKeyInfo) is `c025b0ffd4e676db5710697b756ed9b4a46025966b26faface444f3318c8513f`. Compare against a separately trusted copy of this record; downloading a replacement key and fingerprint from the same untrusted release is insufficient.
+
+## PyPI publication
+
+Every Python package has an associated PyPI publication run. The broker's existing `CI` workflow owns preparation, upload and verification as dependent jobs. Tag releases publish after all checks and GitHub release verification pass. Ordinary pushes and PRs never upload to PyPI.
+
+The organization owns the existing `PYPI_API_TOKEN` Actions secret. Grant this repository access to that selected-repository secret; do not create a duplicate token or place its value in files or commands. The publisher passes it directly to the pinned [PyPA publishing action](https://github.com/pypa/gh-action-pypi-publish) inside the `pypi` GitHub environment. Only that job references the credential. It has no source checkout, build steps or OIDC permission. PyPI attestations require trusted publishing and are disabled for this API-token path; the independently verified Cosign-signed GitHub archives remain the artifact trust source.
+
+To publish an existing signed release, or recover a partial PyPI upload, dispatch from `main`:
+
+```sh
+gh workflow run ci.yml --repo astrivant/1password-agent-broker --ref main -f pypi_release=v0.1.0
+```
+
+This project currently accepts numeric `vMAJOR.MINOR.PATCH` release tags. Preparation requires an annotated tag with a GitHub-verified signature whose source is contained in main. It authenticates the complete GitHub release against the pinned independent key fingerprint, then exports exactly its wheel and source archive. Manual publication uses those original bytes; it does not rebuild the release with the workflow's newer source or move the tag.
+
+The registry preflight permits missing files but rejects mismatched digests, unexpected filenames and yanked files. Identical existing files may be skipped on retry. A final verification job requires the full matching PyPI file set, downloads the exact wheel from PyPI without cache, compares it with the authenticated wheel, installs it in an isolated environment outside the checkout, and runs `agent-broker demo`. Missing credentials, registry errors, skipped/failed publication and missing files remain visible failures. A failed or cancelled run can be dispatched again with the same tag. Never replace published bytes or treat HTTP 403, 429 or 5xx as an unregistered package.
+
+Run `python -m unittest discover -s scripts/release/tests` for registry validation regressions. `bash scripts/ci/checks/release.sh` checks that only authenticated Python archives reach a fresh publication directory. Local runs and a green GitHub artifact release do not establish PyPI availability; record the actual publication run and test the registry install before claiming completion. The public [PyPI JSON API](https://docs.pypi.org/api/json/) supplies the version-specific file hashes.
 
 ## Downstream consumers
 

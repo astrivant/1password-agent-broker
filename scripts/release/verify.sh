@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Verify the public release independently of whether its publishing job ran.
-# GitHub_release_environment::env EXPECTED_RELEASE_KEY_FINGERPRINT::sha256 -> ret::exit_code
+# GitHub_release_environment::env EXPECTED_RELEASE_KEY_FINGERPRINT::sha256 python_destination?::path -> ret::exit_code
 set -euo pipefail
 : "${GITHUB_REF_NAME:?Release tag required}"
 : "${GITHUB_REPOSITORY:?Repository required}"
@@ -34,3 +34,10 @@ printf 'Repository: %s\nTag: %s\nSource commit: %s\n' "$GITHUB_REPOSITORY" "$GIT
     sha256sum "./${required[0]}" "./${required[1]}" "./${required[2]}" SOURCE.txt >expected-checksums
     cmp expected-checksums SHA256SUMS
 )
+
+# Export only authenticated Python bytes to a new directory; never mix them with prior builds.
+if [[ $# -gt 0 ]]; then
+    [[ $# -eq 1 ]]
+    mkdir "$1"
+    cp "$checked/${required[0]}" "$checked/${required[1]}" "$1/"
+fi
