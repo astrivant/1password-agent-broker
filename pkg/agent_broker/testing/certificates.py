@@ -47,6 +47,7 @@ def create(root: Path) -> dict[str, str]:
     (root / "ca.pem").write_bytes(authority.public_bytes(serialization.Encoding.PEM))
     fingerprints = {}
 
+    # Independent leaf keys and usage constraints exercise real certificate-based workload separation.
     for name in ("server", "alpha", "bravo"):
         key = ec.generate_private_key(ec.SECP256R1())
         builder = (
@@ -70,6 +71,8 @@ def create(root: Path) -> dict[str, str]:
                 critical=True,
             )
         )
+
+        # Local hostname verification uses SANs; client identity instead comes from its certificate fingerprint.
         if name == "server":
             builder = builder.add_extension(
                 x509.SubjectAlternativeName(

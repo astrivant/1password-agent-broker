@@ -32,6 +32,7 @@ def summarize(raw: object) -> dict[str, object]:
     vulnerabilities: set[str] = set()
     vulnerability_count = 0
 
+    # Count secrets without copying their match text, file paths, or surrounding source into public artifacts.
     for result in results:
         if not isinstance(result, dict):
             raise ValueError("Invalid scanner result")
@@ -47,6 +48,8 @@ def summarize(raw: object) -> dict[str, object]:
             if finding.get("Severity") not in ("HIGH", "CRITICAL"):
                 continue
             vulnerability_count += 1
+
+            # Only bounded advisory IDs may cross the reporting boundary; arbitrary scanner fields stay private.
             identifier = finding.get("VulnerabilityID", "")
             if isinstance(identifier, str) and re.fullmatch(r"(?:CVE-[0-9]{4}-[0-9]{4,10}|GHSA-[a-z0-9-]{14})", identifier):
                 vulnerabilities.add(identifier)

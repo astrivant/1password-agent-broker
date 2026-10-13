@@ -53,6 +53,8 @@ def routes(broker: Broker, capacity: int) -> Blueprint:
         try:
             with telemetry.request():
                 result = Result("denied", "invalid_request")
+
+                # Accept attribution only from the TLS adapter and reject ambiguous or oversized body framing.
                 certificate = request.environ.get("SSL_CLIENT_CERT")
                 length = request.content_length
                 if (
@@ -73,6 +75,7 @@ def routes(broker: Broker, capacity: int) -> Blueprint:
                 telemetry.responses.labels(request.path[1:], result.state).inc()
                 return Response(encode(data(result)), content_type="application/json")
         finally:
+            # Exceptions and malformed requests must return capacity just like successful executions.
             admission.release()
 
     return blueprint

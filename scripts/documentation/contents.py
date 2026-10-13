@@ -22,6 +22,8 @@ def contents(source: str) -> str:
     """
     rows = []
     fenced = False
+
+    # Ignore headings inside examples so copied Markdown does not enter the document navigation.
     for line in source.splitlines():
         if line.startswith("```"):
             fenced = not fenced
@@ -49,6 +51,8 @@ def main() -> None:
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
+
+    # Discover tracked and new maintained files through Git, excluding installed dependencies and ignored outputs.
     paths = (
         subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=root, check=True, capture_output=True)
         .stdout.decode()

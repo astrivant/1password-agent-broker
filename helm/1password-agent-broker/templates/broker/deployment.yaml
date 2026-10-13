@@ -7,6 +7,7 @@ metadata:
 spec:
   replicas: {{ .Values.replicaCount }}
   revisionHistoryLimit: 3
+  # Retain ready capacity while each replacement starts and passes readiness.
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -20,6 +21,7 @@ spec:
       labels:
         {{- include "broker.selector" . | nindent 8 }}
       annotations:
+        # Roll pods when the reviewed policy or grants change, while retaining the mounted configuration source.
         checksum/configuration: {{ include (print $.Template.BasePath "/configuration/configmap.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
@@ -32,6 +34,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       topologySpreadConstraints:
+        # Require distinct nodes so a single node loss cannot remove every replica.
         - maxSkew: 1
           minDomains: 2
           topologyKey: kubernetes.io/hostname

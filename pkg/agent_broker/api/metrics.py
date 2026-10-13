@@ -72,6 +72,8 @@ class MetricsBuilder:
             Returns:
                 Response: Ready status, or 503 while unavailable or draining.
             """
+
+            # Readiness may inspect dependencies, but metrics and liveness must remain local during an outage.
             available = False
             if not telemetry.draining.is_set():
                 try:
@@ -80,6 +82,8 @@ class MetricsBuilder:
                     available = self.broker.ledger.ready()
                 except (Rejected, OSError, ValueError):
                     pass
+
+            # Shutdown can begin during the checks; a late successful probe must not reopen admission.
             available = available and not telemetry.draining.is_set()
             telemetry.state("ready" if available else "unavailable")
             return Response(contracts.encode(telemetry.snapshot()), status=200 if available else 503, content_type="application/json")

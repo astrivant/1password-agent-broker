@@ -10,6 +10,8 @@ set -euo pipefail
 checked=$(mktemp -d)
 trap 'rm -rf "$checked"' EXIT
 gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$checked"
+
+# Establish trust independently before accepting the public key shipped alongside the artifacts.
 fingerprint=$(openssl pkey -pubin -in "$checked/cosign.pub" -outform DER 2>/dev/null | openssl dgst -sha256)
 [[ ${fingerprint##* } == "$EXPECTED_RELEASE_KEY_FINGERPRINT" ]]
 cosign verify-blob --insecure-ignore-tlog --key "$checked/cosign.pub" \
@@ -27,6 +29,8 @@ printf 'Repository: %s\nTag: %s\nSource commit: %s\n' "$GITHUB_REPOSITORY" "$GIT
 (
     cd "$checked"
     sha256sum --check SHA256SUMS
+
+    # Reconstruct exact manifest membership to reject omitted payloads or unexpected signed entries.
     sha256sum "./${required[0]}" "./${required[1]}" "./${required[2]}" SOURCE.txt >expected-checksums
     cmp expected-checksums SHA256SUMS
 )

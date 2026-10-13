@@ -98,6 +98,7 @@ def structure(value: object, model: type[T], name: str) -> T:  # noqa: UP047
         Rejected: Any key, value, or structural constraint fails.
     """
     try:
+        # Reject structural and value constraints before conversion can coerce untrusted input.
         validate(value, schema(name))
         return CONVERTER.structure(value, model)
     except (ValidationError, BaseValidationError, TypeError, ValueError):
@@ -167,10 +168,12 @@ def policy(path: Path) -> tuple[Policy, str]:
     if len(certificates) != len(set(certificates)):
         raise Rejected("Certificates must have unique owners")
 
+    # Schema-valid names still need cross-reference checks before they can confer authority.
     for principal in item.principals.values():
         if not set(principal.operations).issubset(item.operations):
             raise Rejected("Unknown capability")
 
+    # Only fixed HTTPS destinations are allowed; credentials cannot be redirected through model input.
     for operation in item.operations.values():
         try:
             url = urlsplit(operation.url)

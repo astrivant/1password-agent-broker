@@ -67,6 +67,8 @@ class Telemetry:
         with self._lock:
             if state == "draining":
                 self.draining.set()
+
+            # Retirement is monotonic even if an in-flight readiness check reports success afterward.
             self._state = "draining" if self.draining.is_set() else state
             self.lifecycle.state(self._state)
 
@@ -110,6 +112,8 @@ class Telemetry:
         """
         with self._lock:
             self._active += 1
+
+        # Count admitted work through exception exits as well as successful responses.
         self.in_flight.inc()
         try:
             yield

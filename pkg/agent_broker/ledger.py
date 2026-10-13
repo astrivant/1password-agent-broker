@@ -63,6 +63,8 @@ class Ledger:
             logger = logging.getLogger("psycopg.pool")
             logger.addHandler(logging.NullHandler())
             logger.propagate = False
+
+            # Use native PG settings, require a writable primary, and bound pool, lock, and statement waits.
             self.pool = ConnectionPool(
                 "",
                 min_size=1,
@@ -160,6 +162,8 @@ class Ledger:
                 return
             if self.path is None:
                 raise AuditFailure("Ledger unavailable")
+
+            # IMMEDIATE serializes the first write; every successful context exit commits before releasing ownership.
             connection = sqlite3.connect(self.path, timeout=5, isolation_level="IMMEDIATE")
             with self.telemetry.phase("ledger"):
                 yield connection
@@ -186,6 +190,7 @@ class Ledger:
             Result | None: Cached, conflicting, or uncertain result; None permits execution.
         """
         with self.connection() as connection:
+            # The unique request key elects one owner across processes without replacing an earlier reservation.
             inserted = connection.execute(self.query("insert_request"), (request_id, principal, binding)).rowcount
             if inserted and recovery_binding is not None:
                 connection.execute(self.query("insert_context"), (request_id, recovery_binding))
@@ -193,6 +198,8 @@ class Ledger:
             if not inserted and row is not None:
                 if row[0] != principal or row[1] != binding:
                     return Result("denied", "denied")
+
+                # Missing completion is ambiguous, including after a crash; it never grants a retry.
                 if row[2] is None:
                     return Result("uncertain", "unknown", replayed=True)
                 return evolve(stored_result(row[2]), replayed=True)
@@ -216,6 +223,8 @@ class Ledger:
             context = connection.execute(self.query("select_context"), (request_id,)).fetchone()
             if row is None:
                 raise AuditFailure("Reservation missing")
+
+            # Cancellation after admission, or with legacy unknown admission, must retain uncertainty.
             if row[3] and (context is None or context[1]):
                 result = Result("uncertain", "unknown", audit_warning=result.audit_warning)
             connection.execute(self.query("finish"), (encode(data(result)).decode(), request_id))
@@ -271,12 +280,14 @@ class Ledger:
             Result: Cancellation acknowledgement or a safe previous outcome.
         """
         with self.connection() as connection:
+            # The unique request key elects one owner across processes without replacing an earlier reservation.
             inserted = connection.execute(self.query("insert_request"), (request_id, principal, binding)).rowcount
             connection.execute(self.query("lock_request"), (request_id,))
             row = connection.execute(self.query("select_request"), (request_id,)).fetchone()
             context = connection.execute(self.query("select_context"), (request_id,)).fetchone()
             if row is None:
                 raise AuditFailure("Reservation missing")
+            # A cancellation arriving first becomes a durable tombstone that prevents later execution.
             if inserted:
                 if recovery_binding is not None:
                     connection.execute(self.query("insert_context"), (request_id, recovery_binding))
@@ -287,6 +298,8 @@ class Ledger:
             elif row[2] is not None:
                 return evolve(stored_result(row[2]), replayed=True)
             connection.execute(self.query("cancel"), (request_id,))
+
+            # Acknowledging cancellation is safe only while submission is known not to have started.
             if not inserted and (context is None or context[1]):
                 return Result("uncertain", "unknown")
         return Result("cancelled", "cancelled")

@@ -215,10 +215,12 @@ def test_cancel_after_submission_is_uncertain(fixture: Scenario) -> None:
     with ThreadPoolExecutor(max_workers=1) as pool:
         pending = pool.submit(fixture.clients["alpha"].call, payload)
         try:
+            # The event proves submission was admitted before cancellation, avoiding a scheduler-dependent race.
             assert entered.wait(10)
             assert fixture.clients["alpha"].call(payload).state == "uncertain"
             assert fixture.clients["alpha"].call(payload, cancel=True).state == "uncertain"
         finally:
+            # Always unblock the owned worker, including when an assertion fails.
             release.set()
         assert pending.result(timeout=10).state == "uncertain"
     assert fixture.clients["alpha"].call(payload, inspect=True) == Result("uncertain", "unknown", replayed=True)

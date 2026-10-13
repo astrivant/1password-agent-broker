@@ -120,11 +120,14 @@ def serve(args: argparse.Namespace) -> None:
             (args.metrics_host, args.metrics_port),
             args.capacity,
         )
+
+        # Signal handlers only notify the owner; listener shutdown runs outside the serving thread.
         for signum in (signal.SIGINT, signal.SIGTERM):
             signal.signal(signum, shutdown)
         with running(server):
             stop.wait()
     finally:
+        # The running context drains handlers before their shared storage pool is closed.
         ledger.close()
 
 

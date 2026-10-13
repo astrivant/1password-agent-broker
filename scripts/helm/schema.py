@@ -39,6 +39,8 @@ def close(node: dict[str, object]) -> dict[str, object]:
         dict[str, object]: Closed structure with all documented defaults required after Helm merge.
     """
     result = dict(node)
+
+    # Close only fixed-key structures; caller-supplied maps keep their source schema semantics.
     if "properties" in result:
         properties = mapping(result["properties"])
         result.update(
@@ -59,6 +61,8 @@ def main() -> None:
     metadata = yaml.safe_load(Path("helm/1password-agent-broker/Chart.yaml").read_text())
     defaults = yaml.safe_load(Path("helm/1password-agent-broker/values.yaml").read_text())
     project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+
+    # Fail generation on mismatched release identities before writing a schema for the wrong image or chart.
     if not metadata["version"] == metadata["appVersion"] == defaults["image"]["tag"] == project["version"]:
         raise ValueError("Package, chart, appVersion, and default image tag must agree")
     generated = close(mapping(json.loads(Path(".cache/helm/values.schema.json").read_text())))
@@ -107,6 +111,8 @@ def main() -> None:
     properties["configuration"] = configuration
     generated["properties"] = properties
     generated["required"] = sorted(properties)
+
+    # Validate the assembled dialect before replacing the committed generated contract.
     Draft7Validator.check_schema(generated)
     Path("helm/1password-agent-broker/values.schema.json").write_text(json.dumps(generated, indent=2) + "\n")
 

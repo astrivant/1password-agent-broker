@@ -31,6 +31,7 @@ def running(server: TLSServer | BrokerServer) -> Iterator[None]:
     try:
         yield
     finally:
+        # Stop from the owning thread, then join; server shutdown may wait for the serving loop to exit.
         server.shutdown()
         server.server_close()
         thread.join(timeout=10)

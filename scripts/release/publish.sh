@@ -8,6 +8,8 @@ umask 077
 : "${GITHUB_SHA:?Immutable source revision required}"
 : "${COSIGN_PRIVATE_KEY:?Configure release signing before tagging}"
 export COSIGN_PASSWORD=${COSIGN_PASSWORD:-}
+
+# Finalize provenance and payload hashes before signing; the manifest does not hash itself.
 mkdir -p dist/verification
 printf 'Repository: %s\nTag: %s\nSource commit: %s\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$GITHUB_SHA" >dist/SOURCE.txt
 (
@@ -47,6 +49,8 @@ downloaded=("$checked"/*)
     echo 'Unexpected draft attachment set' >&2
     exit 1
 }
+
+# Matching attachment counts alone are insufficient; each downloaded name and byte sequence must match.
 for asset in "${assets[@]}"; do
     cmp "$asset" "$checked/$(basename "$asset")"
 done
@@ -54,4 +58,6 @@ done
     cd "$checked"
     sha256sum --check SHA256SUMS
 )
+
+# Only the verified downloaded draft may become visible as a release.
 gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false

@@ -12,6 +12,8 @@ poetry run pytest -n 2 -q pkg/agent_broker/tests/test_helm.py
 scripts/helm/.venv/bin/python scripts/helm/.venv/bin/hypothesis-helm test "$chart" \
     --whole-chart --config scripts/helm/hypothesis.yaml --max-examples 12 --jobs 1 \
     --time-limit 120s --no-cache --fail error --seed 20261013
+
+# Render the packaged artifact too, proving packaging preserves the reviewed chart output.
 version=$(poetry version --short)
 helm package "$chart" --version "$version" --app-version "$version" --destination dist
 helm lint "dist/1password-agent-broker-$version.tgz"

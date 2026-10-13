@@ -1,3 +1,4 @@
+-- Admit submission once, only while the request has neither cancellation nor a durable outcome.
 UPDATE request_context SET attempted = 1
 WHERE
     request_id = ? AND attempted = 0

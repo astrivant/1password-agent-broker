@@ -54,6 +54,8 @@ class APIBuilder:
         """
         if self.broker is None or not 1 <= self.capacity <= 64:
             raise ValueError("A broker and capacity between 1 and 64 are required")
+
+        # Compose both route families once; listeners supply their own trusted routing scope at dispatch.
         app = Flask(__name__, static_folder=None)
         app.config.update(MAX_CONTENT_LENGTH=4096, PROPAGATE_EXCEPTIONS=False)
         app.url_map.merge_slashes = False
@@ -68,6 +70,8 @@ class APIBuilder:
             Returns:
                 Response | None: A fixed denial, or permission to dispatch the selected family.
             """
+
+            # Host and forwarded headers cannot promote an observability request into a control request.
             expected = "control" if request.blueprint == "broker" else "observability"
             if request.environ.get("broker.listener") != expected:
                 return Response('{"error":"not found"}', status=404, content_type="application/json")

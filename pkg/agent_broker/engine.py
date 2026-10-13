@@ -58,6 +58,8 @@ class Broker:
             Rejected: The certificate has no unique current owner.
         """
         policy, revision = contracts.policy(self.policy)
+
+        # Resolve ownership from current operator policy, never from caller-supplied attribution.
         matches = [(name, item) for name, item in policy.principals.items() if item.certificate_sha256 == fingerprint]
         if len(matches) != 1:
             raise Rejected("Denied")
@@ -83,6 +85,7 @@ class Broker:
         if request.operation not in principal.operations:
             raise Rejected("Denied")
 
+        # A grant authorizes this exact request at this policy revision, not future uses of the capability.
         if require_approval:
             approval = contracts.approvals(self.approvals).get(request.approval_id)
             if approval is None or approval.revoked or approval.expires_at <= time.time():
@@ -154,6 +157,8 @@ class Broker:
             attributes["request.id"] = request.request_id
             if request.operation in policy.operations:
                 attributes["operation"] = request.operation
+
+            # Recovery survives capability removal but remains bound to the original request and identity snapshot.
             recovery_binding = contracts.digest(
                 {
                     "request": contracts.data(request),
@@ -161,6 +166,8 @@ class Broker:
                     "identity": {key: value for key, value in contracts.data(principal).items() if key != "operations"},
                 }
             )
+
+            # Execution additionally binds the entire policy so a policy edit cannot reuse old authority.
             binding = contracts.digest({"request": contracts.data(request), "principal": name, "policy": revision})
             warning = self.ledger.event("requested", attributes)
 
@@ -183,6 +190,8 @@ class Broker:
                     "destination.class": "https-health",
                 }
             )
+
+            # Persist ownership before resolving credentials; concurrent owners can only recover existing state.
             previous = self.ledger.claim(request.request_id, name, binding, recovery_binding)
             if previous is not None:
                 return self.outcome(previous, attributes, warning)
@@ -201,6 +210,8 @@ class Broker:
                         raise Rejected("Denied")
                     if not self.ledger.cancelled(request.request_id):
                         warning |= self.ledger.event("attempted", attributes)
+
+                        # Commit submission admission before I/O so cancellation cannot falsely promise to undo it.
                         if self.ledger.begin(request.request_id):
                             attempted = True
                             with self.ledger.telemetry.phase("destination"):
@@ -223,4 +234,5 @@ class Broker:
             except AuditFailure:
                 return Result("failed", "audit_failed")
         except AuditFailure:
+            # A storage failure after submission cannot establish whether the destination performed the operation.
             return Result("uncertain" if attempted else "failed", "audit_failed")

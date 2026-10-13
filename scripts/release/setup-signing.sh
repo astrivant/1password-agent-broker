@@ -22,6 +22,8 @@ cosign import-key-pair --key "$backup_directory/import.pem" --output-key-prefix 
 cosign public-key --key "$backup_directory/cosign.key" >"$backup_directory/cosign.pub"
 openssl pkey -pubin -in "$backup_directory/cosign.pub" -outform DER 2>/dev/null |
     openssl dgst -sha256 >"$backup_directory/fingerprint.txt"
+
+# Send only through stdin; neither shell arguments nor ordinary logs may contain the private key.
 gh secret set COSIGN_PRIVATE_KEY --repo "$repository" <"$backup_directory/cosign.key"
 printf '\nRelease signing secret configured. Private backup: %s\n' "$backup_directory"
 cat "$backup_directory/fingerprint.txt"

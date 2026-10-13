@@ -196,6 +196,7 @@ def test_provider_error_redaction(fixture: Scenario, monkeypatch: pytest.MonkeyP
         assert canary not in str(kwargs["env"])
         return subprocess.CompletedProcess([], 1, canary.encode(), canary.encode())
 
+    # Put the same canary in every provider channel so response, argv, environment, and audit leaks are detectable.
     monkeypatch.setenv("SYNTHETIC_UNUSED", canary)
     monkeypatch.setattr(subprocess, "run", failed)
     fixture.broker.provider = OnePasswordProvider()

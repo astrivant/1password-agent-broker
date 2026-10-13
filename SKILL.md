@@ -23,6 +23,8 @@ Operator actions such as creating grants, changing policies, mounting tokens, is
 
 Keep identity claims bound to verified certificates. Do not bypass policy, approval, audit, or durable replay checks to fix an integration. Extend a named capability through models, JSON schemas, provider/executor interfaces, documentation, and meaningful regressions.
 
+Explain significant blocks, loops, and branches with concise intent comments, especially authorization, durable state transitions, cancellation, cleanup, and publication gates. Keep comments aligned with the implementation and preserve template whitespace semantics. Follow the comment and docstring conventions in [development](docs/development.md).
+
 Before publication, run focused tests, full relevant pre-commit checks, and the synthetic demo. CI is the hosted check; do not describe local tests as hosted success. Preserve pending requests and records needed for safe recovery. Maintain the local [RFC review](docs/rfc-review.md) against [restaged RFC #55](https://github.com/astrivant/product-research/pull/55), keeping historical RFC #8 evidence separate from current validation. Posting review comments requires user authorization.
 
 For HA, use the chart under `helm/1password-agent-broker/` and the shared PostgreSQL backend. Never deploy independent SQLite ledgers as replicas. Keep policy/grant values schema-validated and secret values in existing Secrets. CRDs remain a documented proposal. See the operations guide for revocation propagation and durable failover requirements.

@@ -86,6 +86,7 @@ class OnePasswordProvider:
             if name in os.environ:
                 environment[name] = os.environ[name]
         try:
+            # Isolate the SDK native session so the parent can bound its lifetime and reap it on timeout.
             completed = subprocess.run(
                 [sys.executable, "-I", "-m", "agent_broker.sdk_worker"],
                 input=encode({"token": token, "reference": credential.reference}),
@@ -148,7 +149,9 @@ class HealthExecutor:
         try:
             connection.request("GET", url.path or "/", headers={"Authorization": f"Bearer {secret}"})
             return connection.getresponse().status
+
         except (OSError, HTTPException, ValueError):
+            # A lost response does not establish that the destination rejected the authenticated request.
             raise DestinationFailure("Destination outcome unknown") from None
         finally:
             connection.close()

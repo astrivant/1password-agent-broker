@@ -21,6 +21,9 @@
 /.pre-commit-config.yaml @emmeowzing
 /.dockerignore @emmeowzing
 /scripts/release/verify.sh @emmeowzing
+/scripts/release/setup-signing.sh @emmeowzing
+/scripts/ci/checks/security.sh @emmeowzing
+/scripts/ci/checks/trivy_report.py @emmeowzing
 /scripts/qa/github.sh @emmeowzing
 /.github/dependabot.yml @emmeowzing
 /.gitignore @emmeowzing

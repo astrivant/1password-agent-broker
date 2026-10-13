@@ -144,6 +144,7 @@ def scenario(root: Path) -> Iterator[Scenario]:
     context.load_cert_chain(root / "server.pem", root / "server.key")
     destination = TLSServer(("127.0.0.1", 0), Destination, context)
 
+    # Start the destination first so policy captures its real ephemeral port and teardown drains in reverse order.
     with running(destination):
         policy = Policy(
             {

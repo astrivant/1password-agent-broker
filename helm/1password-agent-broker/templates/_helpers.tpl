@@ -1,6 +1,7 @@
 {{- define "broker.name" -}}
 {{- printf "%s-broker" .Release.Name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+{{- /* Keep selectors independent of chart and image versions so upgrades retain workload membership. */ -}}
 {{- define "broker.selector" -}}
 app.kubernetes.io/name: 1password-agent-broker
 app.kubernetes.io/instance: {{ .Release.Name | quote }}

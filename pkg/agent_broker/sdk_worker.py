@@ -41,6 +41,7 @@ def main() -> int:
         int: Zero for a usable credential; two for malformed input or SDK failure.
     """
     try:
+        # Keep the pipe protocol closed and bounded; stdout is reserved for the validated credential alone.
         payload: object = json.loads(sys.stdin.buffer.read(131073))
         if not isinstance(payload, dict) or set(payload) != {"token", "reference"}:
             return 2

@@ -10,6 +10,8 @@ cd "$directory"
 curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 --max-time 60 \
     -O https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz \
     -O https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz.sha256sum
+
+# Check downloaded archive bytes before extracting executables into the runner path.
 sha256sum --check helm-v4.3.0-linux-amd64.tar.gz.sha256sum
 tar -xzf helm-v4.3.0-linux-amd64.tar.gz linux-amd64/helm
 mv linux-amd64/helm ./helm

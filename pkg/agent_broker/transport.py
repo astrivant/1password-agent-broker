@@ -55,6 +55,8 @@ class TLSServer(ThreadingHTTPServer):
             tuple[socket.socket, tuple[str, int]]: Verified TLS connection and peer address.
         """
         connection, address = self.socket.accept()
+
+        # A peer that stalls TLS negotiation must not occupy the accept loop indefinitely.
         connection.settimeout(5)
         try:
             return self.context.wrap_socket(connection, server_side=True), address
@@ -81,6 +83,7 @@ class TLSServer(ThreadingHTTPServer):
         try:
             super().process_request(request, client_address)
         except RuntimeError:
+            # Failed thread creation has no worker finally block to release this admission slot.
             self.slots.release()
             self.shutdown_request(request)
 
@@ -164,6 +167,8 @@ class Client:
                 headers={"Content-Type": "application/json"},
             )
             response = connection.getresponse()
+
+            # Read one byte beyond the response budget so oversized bodies fail instead of being silently truncated.
             payload = response.read(4097)
             if response.status != 200 or len(payload) > 4096:
                 raise Rejected("Invalid broker response")

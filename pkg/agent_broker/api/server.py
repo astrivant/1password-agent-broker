@@ -142,12 +142,15 @@ class BrokerServer:
         context.verify_mode = ssl.CERT_REQUIRED
         adapter = BuiltinSSLAdapter(str(cert), str(key))
         adapter.context = context
+
+        # Match execution slots plus the separate recovery allowance, keeping recovery reachable under load.
         self.control = Listener(address, self.app, "control", capacity + 2, adapter)
         self.metrics: Listener | None = None
         try:
             if metrics_address is not None:
                 self.metrics = Listener(metrics_address, self.app, "observability", 2)
         except OSError:
+            # A failed second bind must release the first listener instead of leaving a partially constructed service.
             self.control.stop()
             raise
         self.server_port = int(self.control.bind_addr[1])
@@ -181,6 +184,8 @@ class BrokerServer:
         if self._closed:
             return
         self._closed = True
+
+        # Close admission before stopping listeners; keep storage alive until their handlers finish.
         self.broker.ledger.telemetry.state("draining")
         self.control.stop()
         if self.metrics is not None:

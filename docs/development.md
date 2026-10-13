@@ -24,6 +24,10 @@ Math validation deliberately uses KaTeX's strict portable subset. GitHub uses Ma
 
 Python uses typed Google-style multiline docstrings, with `Returns: None` for ordinary void functions. Constructors document inputs and side effects without a return section, as required by pydoclint. The generic conversion helper retains `TypeVar` syntax because current pydocstyle cannot parse PEP 695 function type parameters; this does not alter its typed contract.
 
+Add intent comments before significant blocks, loops, and branches, with a blank line separating logical blocks where the language permits. Explain the decision or invariant a maintainer must preserve: trust boundaries, transaction ordering, replay and cancellation semantics, resource ownership, bounded waits, and publication gates. Keep docstrings focused on the callable's contract and comments on the local implementation reason. Avoid narrating obvious syntax or repeating the docstring.
+
+Review comments alongside implementation and tests so they describe observed behavior, including uncertainty and failure paths. Apply the same practice to Python, SQL, shell, tests, and Helm templates. For comment-only changes, verify that executable structure and rendered manifests remain equivalent, then run the relevant repository checks. Edit maintained sources instead of generated output; preserve whitespace-sensitive template behavior.
+
 SQLite transaction behavior is configured through the driver's `IMMEDIATE` isolation level. Reservation is an atomic `INSERT ... ON CONFLICT DO NOTHING` followed by a read in that write transaction. SQL remains in packaged `.sql` files and is linted independently.
 
 ## Layout

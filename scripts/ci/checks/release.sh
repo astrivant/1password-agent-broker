@@ -54,11 +54,15 @@ version=${version%-py3-none-any.whl}
     test -f "$GH_STUB_ASSETS/published"
     fingerprint=$(openssl pkey -pubin -in "$GH_STUB_ASSETS/cosign.pub" -outform DER 2>/dev/null | openssl dgst -sha256)
     EXPECTED_RELEASE_KEY_FINGERPRINT="${fingerprint##* }" bash "$verify_script"
+
+    # A valid bundled key is insufficient unless it matches the independently supplied trust anchor.
     if EXPECTED_RELEASE_KEY_FINGERPRINT=untrusted bash "$verify_script"; then
         echo 'Untrusted signing key was accepted' >&2
         exit 1
     fi
     rm "$GH_STUB_ASSETS/published"
+
+    # Corruption must block the final publish action, not merely produce a diagnostic after publication.
     if GH_STUB_CORRUPT=1 bash "$release_script"; then
         echo 'Corrupted downloaded artifact was accepted' >&2
         exit 1

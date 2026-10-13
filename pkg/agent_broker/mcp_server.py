@@ -69,9 +69,12 @@ async def run(client: Client) -> None:
         if params.name not in ("execute_approved", "cancel_approved", "inspect_approved"):
             result = Result("denied", "invalid_request")
         else:
+            # Keep blocking broker I/O off the MCP loop without moving credential resolution into this process.
             result = await asyncio.to_thread(
                 client.call, params.arguments, cancel=params.name == "cancel_approved", inspect=params.name == "inspect_approved"
             )
+
+        # Both MCP representations carry the same closed result, never downstream headers or bodies.
         payload = data(result)
         return types.CallToolResult(
             content=[types.TextContent(type="text", text=encode(payload).decode())],
