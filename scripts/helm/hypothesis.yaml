@@ -1,0 +1,2 @@
+# Exercise the chart's declared surface, not inferred optional Kubernetes fields.
+downstream_inputs: false

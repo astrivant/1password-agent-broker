@@ -81,3 +81,13 @@ The first release, [v0.0.1](https://github.com/astrivant/1password-agent-broker/
 After publication, both distribution checksums passed and the release bundle verified against the separately retained maintainer key. The downloaded wheel was installed in a fresh environment and its demo ran outside the checkout: two healthy operations, replay without resubmission, rejected cross-identity access, and zero external provider calls.
 
 This evidence describes that release. Live 1Password permissions, production deployment, and operator-selected branch protection still require separate acceptance. Changes to those contracts should add their own reproducible checks rather than inherit this release's result.
+
+## HA and operational API review
+
+Local review on 2026-10-13 exercised 85 tests on macOS/Python 3.12.8, including a disposable PostgreSQL 18.6 database, concurrent replica claims, shared cancellation, and recovery after grant revocation. Measured line coverage was 81%. On Linux ARM64/Python 3.14.8, the development container passed 81 runtime/database tests; four source-chart cases were intentionally exercised separately on the host with Helm.
+
+Both container targets built from the updated lockfile. The production image passed the synthetic demo with a read-only root, private temporary filesystem, dropped capabilities, and no provider account. Helm 4.3.0 lint, Kubernetes 1.30 schema validation, twelve deterministic Hypothesis scale/feature examples, and thirteen hypothesis-helm whole-chart attempts passed. The packaged chart rendered identically to source. The chart generator uses its declared values schema; it does not expand inferred Kubernetes fields into an unsupported configuration surface.
+
+Synthetic release checks verified Python/Helm checksums, downloaded draft bytes, source provenance, the independent signing-key fingerprint, and rejection of corrupted downloads and an untrusted key. These checks used temporary keys and a local GitHub stub. They did not publish a release or change repository signing secrets. The new terminal tag job requires the complete signed release even when its publisher was skipped.
+
+No Kubernetes cluster deployment, database failover exercise, live 1Password account call, or production load benchmark was performed. Resource values are initial sizing guidance. The earlier v0.0.1 hosted evidence above does not cover these changes; the updated workflow still needs its own hosted run. See operations for ConfigMap revocation lag, PostgreSQL durability, and shutdown timeout limits.

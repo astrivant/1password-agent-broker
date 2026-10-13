@@ -27,7 +27,8 @@ if [[ $# == 2 ]]; then
     release_tag=$2
     gh release view "$release_tag" --repo "$repository" --json isDraft,isPrerelease,assets,url |
         jq -e '(.isDraft | not) and (.isPrerelease | not)
-            and ([.assets[].name] as $names | all(["SHA256SUMS", "SHA256SUMS.sigstore.json", "cosign.pub", "fingerprint.txt"][]; . as $name | $names | index($name)))
+            and ([.assets[].name] as $names | all(["SOURCE.txt", "SHA256SUMS", "SHA256SUMS.sigstore.json", "cosign.pub", "fingerprint.txt"][]; . as $name | $names | index($name)))
             and any(.assets[]; .name | endswith(".whl"))
-            and any(.assets[]; .name | endswith(".tar.gz"))'
+            and any(.assets[]; .name | endswith(".tar.gz"))
+            and any(.assets[]; .name | endswith(".tgz"))'
 fi

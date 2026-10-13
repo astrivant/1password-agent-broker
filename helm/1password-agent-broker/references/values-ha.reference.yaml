@@ -1,0 +1,11 @@
+# Override the placeholder with an operator-published, verified image.
+image:
+  repository: registry.example/team/1password-agent-broker
+  tag: "0.0.1"
+replicaCount: 2
+networkPolicy:
+  clientNamespace: agents
+  monitoringNamespace: monitoring
+# Set configuration.policy and configuration.approvals using reviewed local JSON
+# with --set-json in a protected shell script, or generate a private values file.
+# Do not put provider or database credentials in Helm values or --set arguments.

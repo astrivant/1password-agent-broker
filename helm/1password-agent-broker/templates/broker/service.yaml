@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "broker.name" . }}
+  labels:
+    {{- include "broker.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "broker.selector" . | nindent 4 }}
+  ports:
+    - name: https
+      port: 8443
+      targetPort: https
+    - name: metrics
+      port: 9090
+      targetPort: metrics

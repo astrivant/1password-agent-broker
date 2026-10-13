@@ -13,3 +13,5 @@ __pycache__
 *.sqlite*
 dist
 coverage.xml
+**/.venv
+**/__pycache__

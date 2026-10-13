@@ -21,6 +21,7 @@ Let agents use credentials without handing them the keys. Approve a capability, 
 - [Documentation](#documentation)
   - [Deployment and security](#deployment-and-security)
   - [Development and releases](#development-and-releases)
+- [Kubernetes and monitoring](#kubernetes-and-monitoring)
 
 <!-- /toc -->
 
@@ -102,3 +103,7 @@ Use the [operations guide](docs/operations.md) for revocation, credential rotati
 - [Current RFC review](docs/rfc-review.md): implemented gaps, evidence, and remaining integration gates for [RFC #55](https://github.com/astrivant/product-research/pull/55).
 
 This is an independent Astrivant project using 1Password's official SDK. It is not an official 1Password product.
+
+## Kubernetes and monitoring
+
+The [Helm chart](helm/1password-agent-broker/README.md) supports two broker replicas with a shared PostgreSQL replay ledger, validated ConfigMaps, and private Flask metrics/status endpoints. See [operations](docs/operations.md#kubernetes-and-high-availability) for database durability, image/Secret prerequisites, CRD design, and sizing guidance.

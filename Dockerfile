@@ -30,5 +30,5 @@ COPY --from=build /opt/broker /opt/broker
 ENV PATH="/opt/broker/bin:$PATH"
 WORKDIR /home/broker
 USER 10001:10001
-EXPOSE 8443
+EXPOSE 8443 9090
 CMD ["agent-broker", "demo"]

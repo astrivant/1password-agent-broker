@@ -1,0 +1,360 @@
+{
+  "title": "Chart Values",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "description": "Broker replicas on distinct nodes; at least two for HA",
+      "default": 2,
+      "minimum": 2,
+      "maximum": 16
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]+$"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^$|^sha256:[a-f0-9]{64}$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "digest",
+        "pullPolicy",
+        "repository",
+        "tag"
+      ]
+    },
+    "capacity": {
+      "type": "integer",
+      "description": "Concurrent executions per pod; two additional slots are reserved for recovery",
+      "default": 8,
+      "minimum": 1,
+      "maximum": 64
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "description": "Initial CPU reservation; tune using measurements",
+              "default": "250m",
+              "pattern": "^[1-9][0-9]*(m)?$|^[0-9]+\\.[0-9]+$"
+            },
+            "memory": {
+              "type": "string",
+              "description": "Initial memory reservation, including SDK workers",
+              "default": "256Mi",
+              "pattern": "^[1-9][0-9]*(Ki|Mi|Gi|Ti|K|M|G|T)?$"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "cpu",
+            "memory"
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "description": "CPU limit",
+              "default": "2",
+              "pattern": "^[1-9][0-9]*(m)?$|^[0-9]+\\.[0-9]+$"
+            },
+            "memory": {
+              "type": "string",
+              "description": "Pod memory limit, including SDK workers",
+              "default": "1Gi",
+              "pattern": "^[1-9][0-9]*(Ki|Mi|Gi|Ti|K|M|G|T)?$"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "cpu",
+            "memory"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "limits",
+        "requests"
+      ]
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "tls": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "provider": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "postgresql": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "destinationCA": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 63,
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+            },
+            {
+              "const": ""
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "destinationCA",
+        "postgresql",
+        "provider",
+        "tls"
+      ]
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "clientNamespace": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "monitoringNamespace": {
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "clientNamespace",
+        "enabled",
+        "monitoringNamespace"
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "approvals"
+      ],
+      "properties": {
+        "policy": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "principals": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "certificate_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "identity_id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+                  },
+                  "identity_revision": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+                  },
+                  "run_id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+                  },
+                  "operations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+                    },
+                    "uniqueItems": true,
+                    "maxItems": 100
+                  },
+                  "task_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+                  }
+                },
+                "required": [
+                  "certificate_sha256",
+                  "identity_id",
+                  "identity_revision",
+                  "run_id",
+                  "operations"
+                ],
+                "additionalProperties": false
+              },
+              "maxProperties": 1000
+            },
+            "credentials": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "reference": {
+                    "type": "string",
+                    "pattern": "^op://[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+/(?:[a-zA-Z0-9_-]+/)?[a-zA-Z0-9_-]+$"
+                  },
+                  "bootstrap_env": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$"
+                  }
+                },
+                "required": [
+                  "reference"
+                ],
+                "additionalProperties": false
+              },
+              "maxProperties": 1000
+            },
+            "operations": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "credential": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+                  },
+                  "url": {
+                    "type": "string",
+                    "pattern": "^https://[^\\s]+$",
+                    "maxLength": 2048
+                  },
+                  "kind": {
+                    "const": "health"
+                  }
+                },
+                "required": [
+                  "credential",
+                  "url",
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "maxProperties": 1000
+            }
+          },
+          "required": [
+            "version",
+            "principals",
+            "credentials",
+            "operations"
+          ],
+          "additionalProperties": false
+        },
+        "approvals": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "request_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+              },
+              "principal": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+              },
+              "operation": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
+              },
+              "policy_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "expires_at": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "revoked": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "request_id",
+              "principal",
+              "operation",
+              "policy_sha256",
+              "expires_at",
+              "revoked"
+            ],
+            "additionalProperties": false
+          },
+          "maxProperties": 1000
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "capacity",
+    "configuration",
+    "image",
+    "networkPolicy",
+    "replicaCount",
+    "resources",
+    "secrets"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

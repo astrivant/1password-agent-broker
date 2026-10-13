@@ -11,16 +11,17 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from agent_broker.api.server import BrokerServer
     from agent_broker.transport import TLSServer
 
 
 @contextmanager
-def running(server: TLSServer) -> Iterator[None]:
+def running(server: TLSServer | BrokerServer) -> Iterator[None]:
     """
     Own listener and worker lifetime, including cleanup on failed assertions.
 
     Args:
-        server (TLSServer): Bound local server.
+        server (TLSServer | BrokerServer): Bound local fixture or production WSGI runtime.
 
     Yields:
         None: Server is listening until the context exits.

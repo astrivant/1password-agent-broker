@@ -1,4 +1,12 @@
 repos:
+  - repo: https://github.com/bitnami/readme-generator-for-helm
+    rev: 4d29f59abac6aeed6fbc2467e24fc17560057bcb # 3.0.1
+    hooks:
+      - id: helm-readme-generator
+        entry: bash scripts/helm/generate.sh
+        language_version: system
+        pass_filenames: false
+        always_run: true
   - repo: local
     hooks:
       - id: ruff
@@ -47,7 +55,7 @@ repos:
         entry: poetry run python scripts/documentation/contents.py
         language: system
         pass_filenames: false
-        files: '(^README\.md$|^scripts/documentation/)'
+        always_run: true
       - id: actionlint
         name: GitHub Actions contracts
         entry: actionlint

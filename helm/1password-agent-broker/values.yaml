@@ -1,0 +1,52 @@
+## @section Deployment
+## @param replicaCount Broker replicas on distinct nodes; at least two for HA
+replicaCount: 2
+image:
+  ## @param image.repository Operator-published image built from the matching source revision
+  repository: registry.example/1password-agent-broker
+  ## @param image.tag Immutable release tag; use digest for stronger provenance
+  tag: "0.0.1"
+  ## @param image.digest Optional sha256 digest overriding the tag
+  digest: ""
+  ## @param image.pullPolicy Kubernetes image pull policy
+  pullPolicy: IfNotPresent
+## @param capacity Concurrent executions per pod; two additional slots are reserved for recovery
+capacity: 8
+## @param resources.requests.cpu Initial CPU reservation; tune using measurements
+## @param resources.requests.memory Initial memory reservation, including SDK workers
+## @param resources.limits.cpu CPU limit
+## @param resources.limits.memory Pod memory limit, including SDK workers
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+## @section Operator configuration
+configuration:
+  ## @param configuration.policy [object] Closed broker policy; credential references only, never values
+  policy:
+    version: 1
+    principals: {}
+    credentials: {}
+    operations: {}
+  ## @param configuration.approvals [object] Operator-issued grants keyed by approval ID
+  approvals: {}
+secrets:
+  ## @param secrets.tls Existing Secret with tls.crt, tls.key, and ca.crt for broker mTLS
+  tls: broker-tls
+  ## @param secrets.provider Existing Secret with OP_SERVICE_ACCOUNT_TOKEN
+  provider: broker-provider
+  ## @param secrets.postgresql Existing Secret with PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD and ca.crt
+  postgresql: broker-postgresql
+  ## @param secrets.destinationCA Optional existing Secret with ca.crt for a private destination CA
+  destinationCA: ""
+## @section Private network access
+networkPolicy:
+  ## @param networkPolicy.enabled Restrict ingress to explicitly labelled peers; egress is operator-controlled
+  enabled: true
+  ## @param networkPolicy.clientNamespace Namespace containing clients labelled broker-client=true
+  clientNamespace: default
+  ## @param networkPolicy.monitoringNamespace Namespace containing scrapers labelled broker-monitor=true
+  monitoringNamespace: monitoring

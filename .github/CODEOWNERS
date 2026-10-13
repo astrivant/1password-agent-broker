@@ -13,3 +13,13 @@
 /Dockerfile @emmeowzing
 /.github/workflows/ci.yml @emmeowzing
 /.github/CODEOWNERS @emmeowzing
+/helm/ @emmeowzing
+/scripts/helm/ @emmeowzing
+/scripts/documentation/ @emmeowzing
+/scripts/release/publish.sh @emmeowzing
+/scripts/ci/checks/release.sh @emmeowzing
+/.pre-commit-config.yaml @emmeowzing
+/.dockerignore @emmeowzing
+/scripts/release/verify.sh @emmeowzing
+/scripts/qa/github.sh @emmeowzing
+/.github/dependabot.yml @emmeowzing

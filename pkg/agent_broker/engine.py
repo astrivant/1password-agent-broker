@@ -192,7 +192,8 @@ class Broker:
             result = Result("cancelled", "cancelled")
             if not self.ledger.cancelled(request.request_id):
                 try:
-                    secret = self.provider.resolve(policy.credentials[operation.credential])
+                    with self.ledger.telemetry.phase("provider"):
+                        secret = self.provider.resolve(policy.credentials[operation.credential])
 
                     # Revocation, rotation of policy, and cancellation are checked again after provider latency.
                     _, _, _, current_revision = self.authorize(fingerprint, request)
@@ -202,7 +203,8 @@ class Broker:
                         warning |= self.ledger.event("attempted", attributes)
                         if self.ledger.begin(request.request_id):
                             attempted = True
-                            status = self.executor.execute(operation, secret)
+                            with self.ledger.telemetry.phase("destination"):
+                                status = self.executor.execute(operation, secret)
                             result = Result("completed", "healthy" if 200 <= status < 300 else "unhealthy", status)
                     del secret
                 except ProviderFailure:

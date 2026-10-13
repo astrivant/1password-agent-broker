@@ -13,18 +13,18 @@ poetry run pytest -n 4 --cov=agent_broker --cov-report=term-missing
 poetry run agent-broker demo
 ```
 
-Keep the project's virtual environment first on `PATH` when invoking hooks or subprocess tests. The MCP subprocess test uses the current Python executable. Ruff, strict mypy, pydocstyle, pydoclint, SQLFluff, ShellCheck, shfmt, and actionlint cover the maintained languages. `scripts/documentation/contents.py` regenerates README navigation to a maximum of three heading levels.
+Keep the project's virtual environment first on `PATH` when invoking hooks or subprocess tests. The MCP subprocess test uses the current Python executable. Ruff, strict mypy, pydocstyle, pydoclint, SQLFluff, ShellCheck, shfmt, and actionlint cover the maintained languages. `scripts/documentation/contents.py` regenerates root and nested README navigation to a maximum of three heading levels.
 
 Python uses typed Google-style multiline docstrings, with `Returns: None` for ordinary void functions. Constructors document inputs and side effects without a return section, as required by pydoclint. The generic conversion helper retains `TypeVar` syntax because current pydocstyle cannot parse PEP 695 function type parameters; this does not alter its typed contract.
 
-SQLite transaction behavior is configured through the driver's `IMMEDIATE` isolation level. Reservation is an atomic `INSERT OR IGNORE` followed by a read in that write transaction. SQL remains in packaged `.sql` files and is linted independently.
+SQLite transaction behavior is configured through the driver's `IMMEDIATE` isolation level. Reservation is an atomic `INSERT ... ON CONFLICT DO NOTHING` followed by a read in that write transaction. SQL remains in packaged `.sql` files and is linted independently.
 
 ## Layout
 
 | Path | Responsibility |
 | --- | --- |
 | `pkg/agent_broker/` | Typed contracts, authority, durable ledger, credential provider, TLS and MCP adapters. |
-| `pkg/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite statements. |
+| `pkg/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite/PostgreSQL statements. |
 | `pkg/agent_broker/testing/` | Generated certificates and synthetic local service shared by demo/tests. |
 | `pkg/agent_broker/tests/` | Package-local security and integration regressions. |
 | `scripts/` | Documentation, CI redaction, and release operations. |
@@ -75,7 +75,7 @@ bash scripts/release/setup-signing.sh OWNER/REPO /private/new-release-key-backup
 
 The script generates a P-256 PEM key, imports it into Cosign, writes a private backup, removes the temporary PEM, and sends the signing key to the repository's `COSIGN_PRIVATE_KEY` secret through stdin. It prints only the backup location and public-key fingerprint. It refuses to overwrite an existing backup directory. The default key has an empty Cosign passphrase; protect the backup using encrypted storage and mode 0700. For an existing password-protected key, additionally configure `COSIGN_PASSWORD` in GitHub.
 
-For a new project, exercise the first signed release with `v0.0.1` after hooks and main CI pass. For an existing release sequence, use its next compatible version; never move an existing tag. Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI signs checksums for the tested wheel and source distribution, verifies that signature, then uses `gh release create` to attach distributions, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
+For a new project, exercise the first signed release with `v0.0.1` after hooks and main CI pass. For an existing release sequence, use its next compatible version; never move an existing tag. Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI packages the Helm archive alongside the tested wheel and source distribution, signs checksums including `SOURCE.txt`, and assembles a draft GitHub release. It downloads and verifies the complete attachment set before publishing. Interrupted drafts can be retried; published releases are never overwritten. Attachments include the archives, source/tag provenance, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
 
 Download all release files into one directory. Verify the public-key fingerprint against an independently trusted maintainer record, then:
 
@@ -86,6 +86,22 @@ sha256sum --check SHA256SUMS
 
 On macOS use `shasum -a 256 --check SHA256SUMS` for the second command. A synthetic signing check exercises these scripts in CI with temporary keys and a local GitHub stub. Cosign 3 requires a Sigstore bundle; the check prevents older signature-only flags from silently reaching a tag pipeline. This key-based release scheme does not publish to a transparency log. The public key attached to a release is convenient verification material, not its own trust anchor.
 
-Release acceptance includes the real tag pipeline: download its assets, authenticate the checksum bundle with the independently retained signing key, check every distribution hash, and run the installed wheel's demo. A queued workflow or a green main run alone does not verify release publication.
+A terminal tag job runs even if publication was skipped and verifies the complete downloaded release against the independently pinned signing-key fingerprint and expected source revision. Release acceptance includes the real tag pipeline: download its assets, authenticate the checksum bundle with the independently retained signing key, check every distribution hash, and run the installed wheel's demo. A queued workflow or a green main run alone does not verify release publication.
 
 The initial upstream signing key fingerprint (SHA-256 of DER SubjectPublicKeyInfo) is `c025b0ffd4e676db5710697b756ed9b4a46025966b26faface444f3318c8513f`. Compare against a separately trusted copy of this record; downloading a replacement key and fingerprint from the same untrusted release is insufficient.
+
+## Chart validation
+
+Use Helm 4.3.0, kubeconform 0.8.0, and Node.js for Bitnami's pinned README generator. The pre-commit hook derives parameter tables and a structural schema from annotated `values.yaml`; `scripts/helm/schema.py` adds deployment constraints and embeds the packaged authorization schemas. Edit these inputs and regenerate, rather than editing `values.schema.json` or parameter tables. CI checks generated-file drift and the README updater's `--check` mode.
+
+`hypothesis-helm` 1.3.10 requires Python 3.13+ and pytest below 9. The isolated lock in `scripts/helm/` keeps that constraint out of the application's pytest 9 environment. Create its virtual environment with an absolute path so subprocess entry points retain the correct interpreter:
+
+```sh
+python3.14 -m venv "$PWD/scripts/helm/.venv"
+VIRTUAL_ENV="$PWD/scripts/helm/.venv" poetry -C scripts/helm install
+bash scripts/helm/check.sh
+```
+
+The chart job runs independently of Python tests and source builds, validates Kubernetes 1.30 schemas, exercises supported values with Hypothesis and hypothesis-helm, and compares source rendering with the packaged archive. Release-signing contract tests join the actual Python and chart artifacts afterward. The chart follows the public [Polyad chart layout](https://github.com/astrivant/polyad/tree/c446fa5f0dc8eaaec82b49e864e8ca86046c53d1/charts), using this project's top-level `helm/` convention: metadata, annotated values, generated schemas/README, grouped templates, NOTES, license, and concise reference overrides. No dependency lock is generated for an empty dependency set.
+
+PostgreSQL integration tests require an explicitly selected disposable database. Set `BROKER_TEST_POSTGRES=1` and native `PGHOST`, `PGPORT`, `PGDATABASE`, and `PGUSER` variables. Local synthetic containers may use `PGSSLMODE=disable`; production charts enforce certificate verification. CI provisions an isolated PostgreSQL 18.6 service for each Python-version test job. The tests create broker tables, use unique request IDs, and exercise cross-replica claims, cancellation, and recovery. Never point them at a production database.

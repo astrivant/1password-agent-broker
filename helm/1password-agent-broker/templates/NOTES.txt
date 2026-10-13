@@ -1,0 +1,11 @@
+Broker: {{ include "broker.name" . }}.{{ .Release.Namespace }}.svc:8443 (mutual TLS)
+Metrics and status: port 9090, paths /metrics /healthz /livez /readyz (private network only)
+
+Check readiness:
+  kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "broker.name" . }} --timeout=180s
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
+
+At least two schedulable nodes are required, with capacity for one extra pod during rolling updates.
+Provide an HA PostgreSQL writable-primary endpoint with synchronous durable failover.
+Pending requests remain uncertain after a crash; never replay them under a new request ID automatically.
+See docs/operations.md in the source distribution for configuration and recovery contracts.
