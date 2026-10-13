@@ -1,0 +1,18 @@
+## @section HA deployment
+## @param replicaCount Broker replicas spread across at least two nodes
+replicaCount: 2
+image:
+  ## @param image.repository Replace with your operator-published, verified broker image
+  repository: registry.example/team/1password-agent-broker
+  ## @param image.tag Release tag matching the verified image; a private overlay may set image.digest
+  tag: "0.1.1"
+
+## @section Client and monitoring access
+networkPolicy:
+  ## @param networkPolicy.clientNamespace Namespace containing clients labelled broker-client=true
+  clientNamespace: agents
+  ## @param networkPolicy.monitoringNamespace Namespace containing scrapers labelled broker-monitor=true
+  monitoringNamespace: monitoring
+
+# Supply reviewed configuration.policy and configuration.approvals in a private overlay.
+# Keep provider and database credentials in existing Secrets, never Helm values or --set arguments.
