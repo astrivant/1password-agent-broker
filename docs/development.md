@@ -2,11 +2,12 @@
 
 ## Environment and checks
 
-Use Python 3.12 or newer (excluding 3.14.1), Poetry 2.5.1, Git, and actionlint 1.7.12. Dependencies are pinned in `pyproject.toml` and `poetry.lock`; ordinary CI never re-resolves them.
+Use Python 3.12 or newer (excluding 3.14.1), Poetry 2.5.1, Node.js 26.10.0, Git, and actionlint 1.7.12. Python dependencies and documentation tools have committed lockfiles; ordinary CI never re-resolves them.
 
 ```sh
 poetry config virtualenvs.in-project true --local
 poetry install
+npm ci --prefix scripts/documentation --ignore-scripts --no-fund
 poetry run pre-commit install
 poetry run pre-commit run --all-files
 poetry run pytest -n 4 --cov=agent_broker --cov-report=term-missing
@@ -14,6 +15,12 @@ poetry run agent-broker demo
 ```
 
 Keep the project's virtual environment first on `PATH` when invoking hooks or subprocess tests. The MCP subprocess test uses the current Python executable. Ruff, strict mypy, pydocstyle, pydoclint, SQLFluff, ShellCheck, shfmt, and actionlint cover the maintained languages. `scripts/documentation/contents.py` regenerates root and nested README navigation to a maximum of three heading levels.
+
+The `documentation-syntax` hook checks all Git-owned Markdown and standalone `.mmd`/`.mermaid` files with remark, KaTeX, and Mermaid's parser. It reports source locations without rewriting files or launching a browser. ESLint checks the JavaScript tool itself; `npm --prefix scripts/documentation test` runs its positive and negative regressions. CI runs the same hook and tests from the npm lockfile.
+
+Use `$...$` or dollar/backtick pairs for inline math, and `$$` blocks or `math` fences for display math. Escape literal dollars as `\$` or use `<span>$</span>`. Keep illustrative source inside ordinary code spans/fences. Backslash-only math delimiters are rejected because hosted Markdown does not reliably recognize them. Use fenced `mermaid` diagrams. See the [GitHub math contract](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/writing-mathematical-expressions), [GitLab math contract](https://docs.gitlab.com/user/markdown/#math-equations), and [Mermaid parser API](https://mermaid.js.org/config/usage.html#syntax-validation-without-rendering).
+
+Math validation deliberately uses KaTeX's strict portable subset. GitHub uses MathJax and GitLab uses KaTeX; this check does not claim identical engine support or validate mathematical truth. The lockfile overrides nested KaTeX copies to the patched direct version to address GHSA-238p-pmpm-9mq7. Mermaid syntax validation does not verify diagram layout or the host's installed Mermaid version. Preview changed equations and diagrams on the intended host before merging, and use an exported visual for unsupported presentation features.
 
 Python uses typed Google-style multiline docstrings, with `Returns: None` for ordinary void functions. Constructors document inputs and side effects without a return section, as required by pydoclint. The generic conversion helper retains `TypeVar` syntax because current pydocstyle cannot parse PEP 695 function type parameters; this does not alter its typed contract.
 

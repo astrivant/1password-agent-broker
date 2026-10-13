@@ -56,6 +56,18 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: documentation-syntax
+        name: Markdown math and Mermaid syntax
+        entry: npm --prefix scripts/documentation run check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: documentation-javascript
+        name: Documentation tooling JavaScript
+        entry: npm --prefix scripts/documentation run lint
+        language: system
+        pass_filenames: false
+        files: '^scripts/documentation/.*\.(mjs|json)$'
       - id: actionlint
         name: GitHub Actions contracts
         entry: actionlint

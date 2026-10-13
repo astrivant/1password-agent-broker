@@ -23,3 +23,4 @@
 /scripts/release/verify.sh @emmeowzing
 /scripts/qa/github.sh @emmeowzing
 /.github/dependabot.yml @emmeowzing
+/.gitignore @emmeowzing
