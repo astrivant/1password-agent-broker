@@ -7,6 +7,12 @@ description: Develop, validate, and operate approved credential-backed capabilit
 
 Read [SECURITY.md](SECURITY.md) and [operations](docs/operations.md) before introducing real credentials. Follow [development](docs/development.md) for the locked environment and checks.
 
+## Start from current guidance
+
+Inspect the worktree, index, remote branch and current PR before editing. Fetch the intended remote, review incoming changes, and fast-forward when possible. Preserve user edits and published history; resolve divergence from both sides' intended behavior rather than resetting or force-pushing.
+
+Reread changed project instructions, tooling and lockfiles. Reassess applicable maintained skills and prior verified findings whenever this project is revisited. Apply them to concrete contracts and checks; document remaining gaps without importing unrelated workflows or private guidance into the repository. Reading a new skill does not establish that the existing implementation already follows it.
+
 ## First run
 
 Use `agent-broker demo` to verify the synthetic two-identity workflow. It creates only temporary local services and generated credentials. No account setup, model API, or secret values are needed.
@@ -23,6 +29,8 @@ Operator actions such as creating grants, changing policies, mounting tokens, is
 
 Keep identity claims bound to verified certificates. Do not bypass policy, approval, audit, or durable replay checks to fix an integration. Extend a named capability through models, JSON schemas, provider/executor interfaces, documentation, and meaningful regressions.
 
+Use the maintained vendor SDK where it supports the integration. Verify official SDK capabilities and runtime compatibility before introducing a CLI or process wrapper for a new SaaS backend. The existing 1Password worker isolates the official SDK; it is not an `op` CLI adapter.
+
 Explain significant blocks, loops, and branches with concise intent comments, especially authorization, durable state transitions, cancellation, cleanup, and publication gates. Keep comments aligned with the implementation and preserve template whitespace semantics. Follow the comment and docstring conventions in [development](docs/development.md).
 
 Before publication, run focused tests, full relevant pre-commit checks, and the synthetic demo. CI is the hosted check; do not describe local tests as hosted success. Preserve pending requests and records needed for safe recovery. Maintain the local [RFC review](docs/rfc-review.md) against [restaged RFC #55](https://github.com/astrivant/product-research/pull/55), keeping historical RFC #8 evidence separate from current validation. Posting review comments requires user authorization.
@@ -30,3 +38,13 @@ Before publication, run focused tests, full relevant pre-commit checks, and the 
 For HA, use the chart under `helm/1password-agent-broker/` and the shared PostgreSQL backend. Never deploy independent SQLite ledgers as replicas. Keep policy/grant values schema-validated and secret values in existing Secrets. CRDs remain a documented proposal. See the operations guide for revocation propagation and durable failover requirements.
 
 Build HTTP routes through `APIBuilder` and attach metrics with `MetricsBuilder` to the same Flask application. Keep route handlers thin and dependency-free at composition time; the runtime owns production listeners, admission, draining, and storage cleanup. Run the chart checks in `scripts/helm/check.sh` when changing deployment contracts. Package the chart with Python release artifacts and verify downloads before publication.
+
+## Publication and follow-through
+
+Use signed commits and verify the pushed revision on the host. Keep the PR body current with the purpose, behavior, compatibility constraints, exact validation revision, and next review action. Give a brief contributor/contact note, and distinguish authorship, publishing and approval. Read review notes before acting on an ambiguous hold; consult the responsible maintainer when those notes do not resolve it.
+
+Follow [release signing](docs/development.md#release-signing) for explicit key setup, exact artifact selection and downloaded-release verification. A tag or successful build alone is not a verified release. Do not merge, deploy, rotate keys or create credentials merely to complete a source review.
+
+After an authorized release, promptly open upgrade PRs for known downstream consumers and follow their current-revision pipelines through success. Include installation paths and lockfiles in dependency updates; fix ordinary upgrade failures and recheck the new revision. Keep missing access, compatibility blockers and user-owned handoffs explicit. See [consumer follow-through](docs/development.md#downstream-consumers). An explicit request that the user will watch CI takes precedence; PR creation does not imply merge authority.
+
+Before handing work back, review applicable project contracts with actual evidence, exclusions and remaining actions. Preserve confirmed defects as concise regression-backed findings for future work. Report implementation, local validation, remote publication, hosted CI and deployment as separate outcomes.

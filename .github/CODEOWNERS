@@ -18,6 +18,8 @@
 /scripts/documentation/ @emmeowzing
 /scripts/release/publish.sh @emmeowzing
 /scripts/ci/checks/release.sh @emmeowzing
+/scripts/ci/checks/signing.sh @emmeowzing
+/scripts/ci/fixtures/ @emmeowzing
 /.pre-commit-config.yaml @emmeowzing
 /.dockerignore @emmeowzing
 /scripts/release/verify.sh @emmeowzing

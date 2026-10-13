@@ -9,6 +9,20 @@ umask 077
 : "${COSIGN_PRIVATE_KEY:?Configure release signing before tagging}"
 export COSIGN_PASSWORD=${COSIGN_PASSWORD:-}
 
+# Reject missing or stale build outputs before signing or contacting the release host.
+version=${GITHUB_REF_NAME#v}
+payload=("dist/1password_agent_broker-$version-py3-none-any.whl" "dist/1password_agent_broker-$version.tar.gz"
+    "dist/1password-agent-broker-$version.tgz")
+shopt -s nullglob
+archives=(dist/*.whl dist/*.tar.gz dist/*.tgz)
+[[ ${#archives[@]} -eq ${#payload[@]} ]] || {
+    echo 'Expected exactly one wheel, source distribution and chart' >&2
+    exit 1
+}
+for asset in "${payload[@]}"; do
+    test -f "$asset"
+done
+
 # Finalize provenance and payload hashes before signing; the manifest does not hash itself.
 mkdir -p dist/verification
 printf 'Repository: %s\nTag: %s\nSource commit: %s\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$GITHUB_SHA" >dist/SOURCE.txt
@@ -25,7 +39,7 @@ openssl pkey -pubin -in dist/verification/cosign.pub -outform DER 2>/dev/null |
     openssl dgst -sha256 >dist/verification/fingerprint.txt
 printf 'Source commit: %s\n\nVerify SHA256SUMS with the independently trusted signing key, then verify the Python and Helm archives.\n' \
     "$GITHUB_SHA" >dist/verification/release-notes.md
-assets=(dist/*.whl dist/*.tar.gz dist/*.tgz dist/SOURCE.txt dist/verification/SHA256SUMS
+assets=("${payload[@]}" dist/SOURCE.txt dist/verification/SHA256SUMS
     dist/verification/SHA256SUMS.sigstore.json dist/verification/cosign.pub dist/verification/fingerprint.txt)
 # Retry incomplete drafts only; never replace bytes in an already published release.
 if draft=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null); then

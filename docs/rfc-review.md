@@ -34,6 +34,7 @@ Publication, hosted CI, container builds, and release verification need evidence
 - Deployment must enforce agent/broker separation, certificate issuance, encrypted storage, retention, and bounded resource use. No production readiness claim follows from synthetic tests.
 - HTTP framing failures before broker dispatch have no per-request durable audit. Events are OTel-shaped JSON, not an OTLP transport.
 - Pending and uncertain work requires operator reconciliation. Automatic reclaim leases, distributed fencing, and independently replicated ledgers are unsupported.
-- Existing release tooling still publishes directly rather than assembling and verifying a draft, and its key setup cannot reuse an existing backup directory. Those are release-tooling follow-ups; this runtime review does not rotate signing keys, publish a tag, or assert that a new release passed acceptance.
+- Release tooling assembles and verifies a draft before publication, checks exact versioned archive membership, and supports retrying signing setup with the same backup directory. The [release contract checks](development.md#release-signing) cover these paths with synthetic keys and a local host stub. A new real release and downstream consumer acceptance still require their own authorized publication and current-revision evidence.
+- The Helm chart requires an independently published broker image and an external durable PostgreSQL service. This workflow builds test images but does not publish a container registry artifact or deploy a cluster.
 
 The historical implementation and release are evidence for the bounded capability already delivered. Additional capabilities and a live pilot require their own selected operation, approval contract, and observable exit criteria.

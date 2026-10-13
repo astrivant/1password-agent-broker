@@ -14,7 +14,7 @@ poetry run pytest -n 4 --cov=agent_broker --cov-report=term-missing
 poetry run agent-broker demo
 ```
 
-Keep the project's virtual environment first on `PATH` when invoking hooks or subprocess tests. The MCP subprocess test uses the current Python executable. Ruff, strict mypy, pydocstyle, pydoclint, SQLFluff, ShellCheck, shfmt, and actionlint cover the maintained languages. `scripts/documentation/contents.py` regenerates root and nested README navigation to a maximum of three heading levels.
+Select the project's `VIRTUAL_ENV` as well as putting its `bin` directory first on `PATH` when invoking hooks or subprocess tests. An inherited environment selector can override the executable you intended to use. The MCP subprocess test uses the current Python executable. Ruff, strict mypy, pydocstyle, pydoclint, SQLFluff, ShellCheck, shfmt, and actionlint cover the maintained languages. `scripts/documentation/contents.py` regenerates root and nested README navigation to a maximum of three heading levels.
 
 The `documentation-syntax` hook checks all Git-owned Markdown and standalone `.mmd`/`.mermaid` files with remark, KaTeX, and Mermaid's parser. It reports source locations without rewriting files or launching a browser. ESLint checks the JavaScript tool itself; `npm --prefix scripts/documentation test` runs its positive and negative regressions. CI runs the same hook and tests from the npm lockfile.
 
@@ -81,10 +81,16 @@ System CA certificates and Debian security updates are installed from the pinned
 Before your first tag, install OpenSSL, Cosign, and authenticated `gh`, then run:
 
 ```sh
-bash scripts/release/setup-signing.sh OWNER/REPO /private/new-release-key-backup
+bash scripts/release/setup-signing.sh --repo OWNER/REPO --key-dir /private/release-key-backup
 ```
 
-The script generates a P-256 PEM key, imports it into Cosign, writes a private backup, removes the temporary PEM, and sends the signing key to the repository's `COSIGN_PRIVATE_KEY` secret through stdin. It prints only the backup location and public-key fingerprint. It refuses to overwrite an existing backup directory. The default key has an empty Cosign passphrase; protect the backup using encrypted storage and mode 0700. For an existing password-protected key, additionally configure `COSIGN_PASSWORD` in GitHub.
+The helper uses [Cosign's key management](https://docs.sigstore.dev/cosign/key_management/signing_with_self-managed_keys/) to create a password-protected key or validate and reuse an existing one. It sends `COSIGN_PRIVATE_KEY` and `COSIGN_PASSWORD` through [GitHub CLI stdin](https://cli.github.com/manual/gh_secret_set) to the explicitly selected repository. `--help` has no side effects. Omitting `--key-dir` selects `$XDG_DATA_HOME/1password-agent-broker/release-keys/OWNER/REPO`, with `$HOME/.local/share` as the base fallback.
+
+The private directory holds `cosign.key`, `cosign.password`, `cosign.pub`, `fingerprint.txt` and a repository binding. The key and password use mode 0600 and the directory uses 0700; keep them together on encrypted storage outside Git. Keeping the password beside the encrypted key supports recovery but does not protect against someone who can read that directory. Ordinary output contains only status, the backup path and the public-key fingerprint. No real secrets are used by the synthetic checks.
+
+If either upload fails, rerun the same command with the same directory. Existing private-key bytes and password are retained; a different repository binding, invalid password, mismatched public key/fingerprint, linked key path or incomplete backup blocks upload. A directory lock excludes concurrent setup; after an unclean termination, confirm the prior process has stopped before removing its `.setup-signing.lock`. Restore incomplete backups from trusted copies rather than deleting them to trigger key generation. Key rotation is a separate maintainer decision, including updating independently trusted fingerprints.
+
+Earlier helper versions used positional `OWNER/REPO DIRECTORY` arguments and an empty password. Use the explicit flags above for the same directory. If that older backup has no `cosign.password`, create an empty private file there only when the key's original password was empty; otherwise restore its actual password. This preserves the original signing identity. The helper does not rotate or recover lost keys.
 
 For a new project, exercise the first signed release with `v0.0.1` after hooks and main CI pass. For an existing release sequence, use its next compatible version; never move an existing tag. Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI packages the Helm archive alongside the tested wheel and source distribution, signs checksums including `SOURCE.txt`, and assembles a draft GitHub release. It downloads and verifies the complete attachment set before publishing. Interrupted drafts can be retried; published releases are never overwritten. Attachments include the archives, source/tag provenance, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
 
@@ -99,7 +105,17 @@ On macOS use `shasum -a 256 --check SHA256SUMS` for the second command. A synthe
 
 A terminal tag job runs even if publication was skipped and verifies the complete downloaded release against the independently pinned signing-key fingerprint and expected source revision. Release acceptance includes the real tag pipeline: download its assets, authenticate the checksum bundle with the independently retained signing key, check every distribution hash, and run the installed wheel's demo. A queued workflow or a green main run alone does not verify release publication.
 
+Publication rejects missing, differently versioned or additional build archives before signing or creating a draft. Use a clean build output containing exactly the wheel, source distribution and Helm archive for the selected tag. `bash scripts/ci/checks/signing.sh` exercises setup and retry preservation offline; `bash scripts/ci/checks/release.sh` also requires those built archives and exercises signed publication through a local GitHub stub. CI runs both in the existing release-contract job.
+
 The initial upstream signing key fingerprint (SHA-256 of DER SubjectPublicKeyInfo) is `c025b0ffd4e676db5710697b756ed9b4a46025966b26faface444f3318c8513f`. Compare against a separately trusted copy of this record; downloading a replacement key and fingerprint from the same untrusted release is insufficient.
+
+## Downstream consumers
+
+After verifying an authorized release, update known consumer repositories through focused PRs. Track each repository, previous and target version, affected installation/deployment paths, PR head, pipeline URLs and next review action. Reuse an existing upgrade PR. Discover consumers from maintained manifests, integrations and maintainer records; a repository search alone does not prove the inventory is exhaustive. Keep private consumer names and access details in their owning private records.
+
+No external consumer inventory is currently verified by this repository. The integration surfaces to inspect are Python installations and lockfiles, MCP launch commands, Helm chart pins and values, and broker container image tags or digests. The chart requires an independently published broker image; the current release workflow does not publish one. Do not claim that shipping the chart upgrades or deploys an external service.
+
+Exercise each consumer's installation and compatibility checks, then inspect all applicable pipelines for its current PR revision. Resolve failures and recheck after every correction; older green runs, queued jobs and unexpected skips do not establish success. Where CI uses a merge checkout, bind its evidence to the reviewed head and tested merge revision. Finish with links and actual outcomes for every known consumer, retaining unresolved upgrades as explicit handoffs. The maintainer still controls merging and deployment; honor an explicit request that they will monitor CI themselves.
 
 ## Chart validation
 

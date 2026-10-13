@@ -5,51 +5,49 @@ set -euo pipefail
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 mkdir "$scratch/bin" "$scratch/dist" "$scratch/uploads"
-# This stub consumes secret input without persisting it or making network requests.
-cat >"$scratch/bin/gh" <<'STUB'
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ $1 == secret && $2 == set ]]; then
-    cat >/dev/null
-elif [[ $1 == release && $2 == view ]]; then
-    if [[ -e "$GH_STUB_ASSETS/published" ]]; then echo false; else exit 1; fi
-elif [[ $1 == release && $2 == create ]]; then
-    [[ " $* " == *" --draft "* ]]
-    for argument in "$@"; do
-        if [[ $argument == dist/* && $argument != */release-notes.md ]]; then
-            cp "$argument" "$GH_STUB_ASSETS/"
-        fi
-    done
-elif [[ $1 == release && $2 == download ]]; then
-    while [[ $1 != --dir ]]; do shift; done
-    for asset in "$GH_STUB_ASSETS/"*; do
-        if [[ $(basename "$asset") != published ]]; then cp "$asset" "$2/"; fi
-    done
-    if [[ ${GH_STUB_CORRUPT:-0} == 1 ]]; then
-        printf 'corrupted\n' >>"$2/SOURCE.txt"
-    fi
-elif [[ $1 == release && $2 == edit ]]; then
-    [[ " $* " == *" --draft=false "* ]]
-    touch "$GH_STUB_ASSETS/published"
-else
-    exit 2
-fi
-STUB
+# Reuse the same independently linted host stub for setup and release contract checks.
+cp scripts/ci/fixtures/release-gh.sh "$scratch/bin/gh"
 chmod +x "$scratch/bin/gh"
-PATH="$scratch/bin:$PATH" bash scripts/release/setup-signing.sh synthetic/repository "$scratch/keys"
+bash scripts/ci/checks/signing.sh
+export GH_STUB_KEYS="$scratch/keys" GH_STUB_CALLS="$scratch/secret-calls"
+PATH="$scratch/bin:$PATH" bash scripts/release/setup-signing.sh --repo synthetic/repository --key-dir "$GH_STUB_KEYS"
 cp dist/*.whl dist/*.tar.gz dist/*.tgz "$scratch/dist/"
-export COSIGN_PRIVATE_KEY
+export COSIGN_PRIVATE_KEY COSIGN_PASSWORD
 COSIGN_PRIVATE_KEY=$(cat "$scratch/keys/cosign.key")
+COSIGN_PASSWORD=$(cat "$scratch/keys/cosign.password")
 export GH_STUB_ASSETS="$scratch/uploads"
 release_script="$PWD/scripts/release/publish.sh"
 verify_script="$PWD/scripts/release/verify.sh"
+# Require an unambiguous current build instead of silently selecting the first retained wheel.
+shopt -s nullglob
 wheels=(dist/*.whl)
+[[ ${#wheels[@]} -eq 1 ]] || {
+    echo 'Expected exactly one built wheel' >&2
+    exit 1
+}
 version=${wheels[0]#dist/1password_agent_broker-}
 version=${version%-py3-none-any.whl}
 (
     cd "$scratch"
     export GITHUB_REF_NAME="v$version" GITHUB_REPOSITORY=synthetic/repository GITHUB_SHA=synthetic-commit
     export PATH="$scratch/bin:$PATH"
+    # A retained older build must be rejected before signing or creating a draft.
+    touch dist/stale.whl
+    if bash "$release_script"; then
+        echo 'Stale build output was accepted' >&2
+        exit 1
+    fi
+    test -z "$(ls -A "$GH_STUB_ASSETS")"
+    rm dist/stale.whl
+
+    # The right archive count is insufficient when a build belongs to another version.
+    mv "dist/1password_agent_broker-$version-py3-none-any.whl" dist/incorrect-version.whl
+    if bash "$release_script"; then
+        echo 'Wrong-version build output was accepted' >&2
+        exit 1
+    fi
+    test -z "$(ls -A "$GH_STUB_ASSETS")"
+    mv dist/incorrect-version.whl "dist/1password_agent_broker-$version-py3-none-any.whl"
     bash "$release_script"
     test -f "$GH_STUB_ASSETS/published"
     fingerprint=$(openssl pkey -pubin -in "$GH_STUB_ASSETS/cosign.pub" -outform DER 2>/dev/null | openssl dgst -sha256)
