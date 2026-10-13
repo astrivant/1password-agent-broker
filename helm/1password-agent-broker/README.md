@@ -39,7 +39,7 @@ The chart is packaged as a versioned `.tgz` alongside the Python release, covere
 | --------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------- |
 | `replicaCount`              | Broker replicas on distinct nodes; at least two for HA                        | `2`                                       |
 | `image.repository`          | Operator-published image built from the matching source revision              | `registry.example/1password-agent-broker` |
-| `image.tag`                 | Immutable release tag; use digest for stronger provenance                     | `0.0.1`                                   |
+| `image.tag`                 | Immutable release tag; use digest for stronger provenance                     | `0.1.0`                                   |
 | `image.digest`              | Optional sha256 digest overriding the tag                                     | `""`                                      |
 | `image.pullPolicy`          | Kubernetes image pull policy                                                  | `IfNotPresent`                            |
 | `capacity`                  | Concurrent executions per pod; two additional slots are reserved for recovery | `8`                                       |

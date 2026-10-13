@@ -1,7 +1,7 @@
 # Override the placeholder with an operator-published, verified image.
 image:
   repository: registry.example/team/1password-agent-broker
-  tag: "0.0.1"
+  tag: "0.1.0"
 replicaCount: 2
 networkPolicy:
   clientNamespace: agents

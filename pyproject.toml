@@ -1,6 +1,6 @@
 [project]
 name = "1password-agent-broker"
-version = "0.0.1"
+version = "0.1.0"
 description = "Let agents use approved 1Password-backed capabilities without receiving secret values"
 readme = "README.md"
 requires-python = ">=3.12,!=3.14.1,<4"
