@@ -100,7 +100,7 @@ jobs:
         run: |
           docker build --target production -t broker:test .
           docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges broker:test agent-broker demo
-          docker run --rm broker:test op --version
+          docker run --rm broker:test python -c 'from onepassword import Secrets; Secrets.validate_secret_reference("op://synthetic/item/token")'
           docker build --target development -t broker:development .
           docker run --rm broker:development pytest -n 4 -q
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

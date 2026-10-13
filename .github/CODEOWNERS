@@ -1,6 +1,7 @@
 # Review routing for the maintained broker and its operating contracts.
 /pkg/agent_broker/ @emmeowzing
 /docs/architecture.md @emmeowzing
+/docs/development.md @emmeowzing
 /docs/operations.md @emmeowzing
 /docs/validation.md @emmeowzing
 /docs/rfc-review.md @emmeowzing
@@ -8,4 +9,7 @@
 /SECURITY.md @emmeowzing
 /SKILL.md @emmeowzing
 /pyproject.toml @emmeowzing
+/poetry.lock @emmeowzing
+/Dockerfile @emmeowzing
+/.github/workflows/ci.yml @emmeowzing
 /.github/CODEOWNERS @emmeowzing

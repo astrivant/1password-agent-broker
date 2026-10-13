@@ -19,6 +19,7 @@ The tests exercise real local HTTPS/mTLS and an actual MCP 2 stdio subprocess. S
 | Input authority | Unknown URL, method, header, vault, item, field, identity, reference, and instruction fields rejected before credential resolution. |
 | Approval | Expired, revoked, and stale-policy grants rejected. |
 | Credential lifetime | Rotation is observed on the next request; no credential is cached in agent state. |
+| Official SDK | Actual authentication/resolution adapters with a synthetic core; offline native reference validation; scoped bootstrap rotation, worker input rejection, and redacted timeout/provider errors. |
 | Replay | Completed requests return stored results; conflicting UUID reuse denied; pending reservations remain uncertain. |
 | Cancellation | Before execution and during a provider lookup, synchronized using events rather than sleeps. |
 | Unknown outcomes | Destination failure is not automatically resubmitted. |
@@ -41,6 +42,12 @@ On 2026-10-13, the updated implementation passed 59 tests with four workers on P
 All repository pre-commit hooks passed, including strict typing, docstring contracts, SQL, shell, and workflow validation. Wheel and source-distribution builds passed. The wheel was installed into a temporary target outside the checkout; its imported package location was verified and its demo passed using the locked runtime dependencies. Containers, the hosted Python matrix, Trivy, and a newly signed release were not run for this review.
 
 The [review record](rfc-review.md) maps the implementation to the restaged RFC and identifies remaining integration gates. These are local results. Historical hosted and release evidence below does not validate this revision; live provider permissions and deployment isolation remain untested.
+
+## SDK migration evidence
+
+On 2026-10-13, the SDK migration passed all 74 tests on Python 3.12.8 with four workers and 78% measured line coverage, plus all repository hooks, Poetry lock validation, distribution builds, and the synthetic demo. SDK 0.4.1 installed from its source distribution and passed native reference validation on macOS ARM64 with Python 3.14.8. No real account authentication was attempted.
+
+Both container targets built on Linux ARM64 with Python 3.14.8 and locked dependencies. The production image passed its demo with a read-only root, dropped capabilities, and no-new-privileges; native SDK reference validation also passed. Its installed wheel's isolated worker rejected malformed input with no output. The development container passed all 74 tests. Hosted CI, other container architectures, Trivy, and a new release were not exercised for this migration.
 
 ## Hosted checks
 

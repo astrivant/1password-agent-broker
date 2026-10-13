@@ -14,8 +14,6 @@ from agent_broker.exceptions import AuditFailure, DestinationFailure, ProviderFa
 from agent_broker.providers import OnePasswordProvider
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     import pytest
     from agent_broker.models import Credential, Operation
     from agent_broker.testing.scenario import Scenario
@@ -168,20 +166,17 @@ def test_audit_storage_failure_prevents_secret_access(fixture: Scenario, monkeyp
     assert fixture.provider.calls == fixture.destination_calls == []
 
 
-def test_provider_error_redaction(fixture: Scenario, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_provider_error_redaction(fixture: Scenario, monkeypatch: pytest.MonkeyPatch) -> None:
     """
-    Keep CLI stdout, stderr, bootstrap values, and exception bodies out of returned status.
+    Keep SDK worker stdout, stderr, bootstrap values, and exception bodies out of returned status.
 
     Args:
         fixture (Scenario): Synthetic environment.
         monkeypatch (pytest.MonkeyPatch): Scoped process replacement.
-        tmp_path (Path): Temporary trusted executable path.
 
     Returns:
         None: Assert safe failure and no secret-bearing command arguments.
     """
-    executable = tmp_path / "op-synthetic"
-    executable.touch()
     observed: list[object] = []
     canary = "synthetic-provider-error-canary"
 
@@ -194,15 +189,16 @@ def test_provider_error_redaction(fixture: Scenario, monkeypatch: pytest.MonkeyP
             **kwargs (object): Subprocess environment and pipe configuration.
 
         Returns:
-            subprocess.CompletedProcess[bytes]: Synthetic failed CLI response.
+            subprocess.CompletedProcess[bytes]: Synthetic failed SDK worker response.
         """
         observed.extend(args)
         assert kwargs["capture_output"] is True and kwargs["check"] is False
+        assert canary not in str(kwargs["env"])
         return subprocess.CompletedProcess([], 1, canary.encode(), canary.encode())
 
     monkeypatch.setenv("SYNTHETIC_UNUSED", canary)
     monkeypatch.setattr(subprocess, "run", failed)
-    fixture.broker.provider = OnePasswordProvider(executable)
+    fixture.broker.provider = OnePasswordProvider()
     result = fixture.clients["alpha"].call(contracts.data(fixture.request()))
     assert result.code == "provider_failed" and canary not in str(result)
     assert canary not in str(observed)

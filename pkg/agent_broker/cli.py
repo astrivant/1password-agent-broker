@@ -41,7 +41,6 @@ def parser() -> argparse.ArgumentParser:
     serve.add_argument("--database", type=Path, required=True)
     serve.add_argument("--client-ca", type=Path, required=True)
     serve.add_argument("--destination-ca", type=Path)
-    serve.add_argument("--op", type=Path, required=True, help="Absolute trusted 1Password CLI path")
     grant = commands.add_parser("approve", help="Create one exact operator-approved request")
     grant.add_argument("--principal", required=True)
     grant.add_argument("--operation", required=True)
@@ -88,9 +87,7 @@ def serve(args: argparse.Namespace) -> None:
     """
     contracts.policy(args.policy)
     contracts.approvals(args.approvals)
-    broker = Broker(
-        args.policy, args.approvals, Ledger(args.database, export), OnePasswordProvider(args.op), HealthExecutor(args.destination_ca)
-    )
+    broker = Broker(args.policy, args.approvals, Ledger(args.database, export), OnePasswordProvider(), HealthExecutor(args.destination_ca))
     server = BrokerServer((args.host, args.port), broker, args.cert, args.key, args.client_ca)
     stop = threading.Event()
 

@@ -62,7 +62,7 @@ flowchart LR
     M -->|Mutual TLS, capability request| B[Broker]
     P[Operator policy and approvals] --> B
     B --> L[Durable audit and replay ledger]
-    B -->|Approved field reference| O[1Password CLI]
+    B -->|Approved field reference| O[1Password SDK worker]
     O -->|In-memory credential| B
     B -->|Fixed HTTPS operation| S[Approved service]
 ```
@@ -79,7 +79,7 @@ For a wholly local developer environment, consider [1Password's native Environme
 
 ### Connect 1Password and an agent
 
-Install the [official 1Password CLI](https://www.1password.dev/cli/get-started), create a narrowly scoped service account, and follow [operator setup](docs/operations.md). It covers policy, certificates, the broker process, request approvals, and MCP configuration.
+The broker includes the [official 1Password Python SDK](https://github.com/1Password/onepassword-sdk-python). Create a narrowly scoped service account and follow [operator setup](docs/operations.md). It covers platform requirements, policy, certificates, the broker process, request approvals, and MCP configuration.
 
 ### Review access and recover work
 
@@ -101,4 +101,4 @@ Use the [operations guide](docs/operations.md) for revocation, credential rotati
 - [Contributing](CONTRIBUTING.md) and [agent instructions](SKILL.md).
 - [Current RFC review](docs/rfc-review.md): implemented gaps, evidence, and remaining integration gates for [RFC #55](https://github.com/astrivant/product-research/pull/55).
 
-This is an independent Astrivant project using 1Password's supported CLI. It is not an official 1Password product.
+This is an independent Astrivant project using 1Password's official SDK. It is not an official 1Password product.

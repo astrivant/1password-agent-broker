@@ -12,6 +12,7 @@ dependencies = [
     "jsonschema==4.26.0",
     "cryptography==50.0.2",
     "mcp==2.3.0",
+    "onepassword-sdk==0.4.1",
     "opentelemetry-api==1.45.1",
 ]
 classifiers = [
@@ -70,6 +71,10 @@ python_version = "3.12"
 strict = true
 disallow_any_explicit = true
 files = ["pkg", "scripts"]
+
+[[tool.mypy.overrides]]
+module = ["onepassword.*"]
+follow_untyped_imports = true
 
 [tool.pydocstyle]
 convention = "google"

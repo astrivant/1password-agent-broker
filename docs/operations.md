@@ -2,7 +2,9 @@
 
 ## Operator setup
 
-Use a private directory, a broker-specific OS user, Python 3.12+ (excluding 3.14.1), and [1Password CLI](https://www.1password.dev/cli/get-started). Create a [1Password service account](https://www.1password.dev/service-accounts/get-started) with access only to the required vault. Set its token in the broker environment as `OP_SERVICE_ACCOUNT_TOKEN`; do not put the value in a policy, shell argument, Git, MCP config, or model prompt.
+Use a private directory, a broker-specific OS user, and Python 3.12+ (excluding 3.14.1). Installation includes the [1Password Python SDK](https://github.com/1Password/onepassword-sdk-python); no `op` executable is needed. SDK wheels support x86-64 and ARM64 on macOS and Linux, and x86-64 on Windows. Linux requires glibc 2.32+ and libssl3; the production container includes these dependencies.
+
+Create a [1Password service account](https://www.1password.dev/service-accounts/get-started) with access only to the required vault. Set its token in the broker environment as `OP_SERVICE_ACCOUNT_TOKEN`; do not put the value in a policy, shell argument, Git, MCP config, or model prompt. The broker explicitly authenticates the SDK with that selected token; it does not use a desktop login session.
 
 Provision a trusted TLS CA, a server certificate for the broker hostname, and a separate client certificate per workload/run. Certificates need the appropriate server/client extended key usages and current X.509 extensions. The demo's CA is synthetic and is never reused for deployment. Compute a client's policy fingerprint from DER:
 
@@ -48,7 +50,7 @@ Use opaque identity, run, and task IDs suitable for the operator's audit storage
 agent-broker config lint --policy /private/broker/policy.json --approvals /private/broker/approvals.json
 agent-broker serve --policy /private/broker/policy.json --approvals /private/broker/approvals.json \
   --database /private/broker/audit.db --cert /private/broker/server.pem --key /private/broker/server.key \
-  --client-ca /private/broker/ca.pem --op /usr/local/bin/op
+  --client-ca /private/broker/ca.pem
 ```
 
 The server defaults to `127.0.0.1:8443`. Choose `--host` and `--port` explicitly for another listener. `--destination-ca` trusts a private target service CA; omitting it uses system roots. Startup fails if required configuration is invalid. Server stdout contains secret-free audit events; errors go to stderr as generic operational messages.
@@ -101,6 +103,10 @@ Changing a conversational identity has no effect on the broker's certificate. Se
 - **Shutdown:** SIGINT/SIGTERM closes admission and drains bounded handlers. Force termination leaves durable pending reservations for inspection.
 
 The broker does not retry provider or destination operations automatically. A failed provider result is replayable; after repairing the provider, issue a new reviewed grant. This avoids confusing transient transport failure with permission to repeat a remote side effect.
+
+## SDK upgrade
+
+Remove `--op` from existing `serve` commands and reinstall the broker with its locked SDK dependency. The executable-path option has been removed. Existing policy references, explicit `bootstrap_env` selectors, approvals, and ledgers keep their formats. Run `python -c 'from onepassword import Secrets; Secrets.validate_secret_reference("op://synthetic/item/token")'` in the installed environment to check native library loading without accessing an account. A real approved request is still required to validate service-account permissions.
 
 ## Existing ledger upgrade
 

@@ -57,7 +57,7 @@ class Credential:
 
     Attributes:
         reference (str): Exact 1Password field URI, never supplied by the agent.
-        bootstrap_env (str): Broker-only token selector, defaulting to the official CLI variable.
+        bootstrap_env (str): Broker-only token selector, defaulting to the official service-account variable.
     """
 
     reference: str

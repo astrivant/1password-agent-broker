@@ -6,7 +6,7 @@ Use [GitHub private vulnerability reporting](https://github.com/astrivant/1passw
 
 ## Trust boundaries
 
-The broker process, its OS account, policy and approval files, certificate authority, database directory, and 1Password CLI installation are trusted. Run the agent and broker as separate OS users or workloads. The agent must not read the broker's environment, filesystem, process memory, bootstrap token, or private server key. Anyone with a workload private key can exercise that workload's currently approved capabilities.
+The broker process, its OS account, policy and approval files, certificate authority, database directory, and 1Password SDK worker and native libraries are trusted. Run the agent and broker as separate OS users or workloads. The agent must not read the broker's environment, filesystem, process memory, bootstrap token, or private server key. Anyone with a workload private key can exercise that workload's currently approved capabilities.
 
 The broker uses mTLS certificate fingerprints, not client-provided identity claims. It validates closed request schemas and resolves only an exact operator-selected field. Grants bind an operation, request UUID, principal, expiry, and canonical policy hash. Policy changes invalidate outstanding grants. A second authority check after credential resolution catches revocation during that lookup; cancellation or revocation racing an already submitted request cannot undo it.
 
@@ -18,8 +18,8 @@ The implemented operation is an HTTPS GET with a bearer token. The endpoint is f
 
 | Data | Location and lifetime | Responsibility |
 | --- | --- | --- |
-| 1Password bootstrap token | Broker environment and short-lived CLI child environment | Use a dedicated service account with minimum vault access; rotate and revoke through 1Password. |
-| Resolved credential | CLI stdout pipe, broker memory, HTTPS request | Never returned to MCP, audit, or application stdout. Python cannot guarantee memory zeroization. |
+| 1Password bootstrap token | Broker environment, private worker input pipe, SDK/native memory until worker exit | Use a dedicated service account with minimum vault access; rotate and revoke through 1Password. The token is absent from worker arguments and environment. |
+| Resolved credential | SDK/native memory, captured worker output pipe, broker memory, HTTPS request | Never returned to MCP, audit, or application stdout. The worker exits after one resolution; Python cannot guarantee memory zeroization. |
 | Workload/server keys | Operator-managed private files | Restrict permissions, back up securely, and rotate certificates. Removing a fingerprint revokes new requests. |
 | Policy and approvals | Operator-managed JSON, read for each request | Contains reference metadata and authority; protect against writes by agents. Serialize approval-file edits. |
 | Audit and replay ledger | SQLite file, owner-only mode, private parent directory | Contains identity/run/reference aliases and outcomes, not credential values. Encrypt the underlying volume and backups when metadata is sensitive. |

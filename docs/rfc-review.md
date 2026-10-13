@@ -16,6 +16,12 @@ Review date: 2026-10-13. Baseline: broker commit `326b373a8cd69265916cf270aca6a0
 
 The implementation stays independent of any particular knowledge platform. Identity source verification, certificate provisioning, and selection of an identity/run remain operator responsibilities. A prompt-level identity switch is not authentication. Existing provider and executor protocols remain the extension points; this review adds no arbitrary credential-read or network capability.
 
+## SDK integration
+
+The provider now uses the [official Python SDK at 0.4.1](https://github.com/1Password/onepassword-sdk-python/releases/tag/v0.4.1). The operator-selected service account authenticates an SDK client, which resolves exactly the policy-selected field. A short-lived worker preserves the existing ten-second timeout and bounds native session lifetime because this SDK revision has no public close method. The CLI binary and `serve --op` option are removed; [upgrade instructions](operations.md#sdk-upgrade) cover the command change and native runtime requirements.
+
+Synthetic tests cover the SDK's real Python authentication/resolution adapters, native library loading, selected-account rotation, malformed worker input, timeout handling, and diagnostic redaction. Account authentication and vault permissions still require an authorized live integration check.
+
 ## Validation and acceptance
 
 See [validation](validation.md) for current local results and the repository-wide acceptance inventory. Synthetic tests exercise actual localhost HTTPS/mTLS and an MCP stdio process, with no real provider account or destination. Existing reservations are retained when the additive context table is created; missing legacy evidence is not inferred.

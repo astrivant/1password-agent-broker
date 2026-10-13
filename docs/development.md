@@ -32,14 +32,16 @@ SQLite transaction behavior is configured through the driver's `IMMEDIATE` isola
 
 ## Containers
 
-The production image uses a non-root UID/GID 10001, Tini as PID 1, no development dependencies, a bundled official 1Password CLI, and an installed wheel. Tini forwards signals to the process group; the Python server stops accepting work and joins its owned threads. Use a private network, read-only root, dropped capabilities, and limits for a deployment.
+The production image uses a non-root UID/GID 10001, Tini as PID 1, no development dependencies, the official 1Password SDK, and an installed wheel. Debian provides the SDK's glibc and libssl3 native requirements. The build loads the SDK's native library and validates a synthetic reference offline. Tini forwards signals to the process group; the Python server stops accepting work and joins its owned threads. Use a private network, read-only root, dropped capabilities, and limits for a deployment.
 
 ```sh
 docker compose --profile demo run --build --rm demo
 docker compose --profile development run --build --rm development
 ```
 
-These profiles run synthetic work only and require no credentials. The development target contains the locked development tools. For a real broker, override the command with `agent-broker serve ... --op /usr/local/bin/op --host 0.0.0.0`, mount operator configuration and certificate files read-only, and give only UID 10001 a private writable ledger volume. Inject the service-account token through your runtime secret facility into the broker process alone. Never bake it into a Dockerfile or Compose file.
+These profiles run synthetic work only and require no credentials. The development target contains the locked development tools. For a real broker, override the command with `agent-broker serve ... --host 0.0.0.0`, mount operator configuration and certificate files read-only, and give only UID 10001 a private writable ledger volume. Inject the service-account token through your runtime secret facility into the broker process alone. Never bake it into a Dockerfile or Compose file.
+
+The SDK is pinned to 0.4.1 in `pyproject.toml` and `poetry.lock`. Its published wheels stop at CPython 3.13; Python 3.14 installs its source distribution with bundled native libraries. The package omits `py.typed`, so mypy follows its inline annotations through a scoped `follow_untyped_imports` override. Tests exercise the actual authentication and resolution adapters against a synthetic native boundary, plus real offline native reference validation. They never authenticate to a live account.
 
 ## CI and pinned tools
 
@@ -50,7 +52,6 @@ Pins outside Poetry's lockfile:
 | Component | Version | Source of truth |
 | --- | --- | --- |
 | Python container | 3.14.8 slim Trixie, digest pinned | `Dockerfile`, [Docker Official Image](https://hub.docker.com/_/python). |
-| 1Password CLI container | 2.40.0, digest pinned | `Dockerfile`, [official image](https://hub.docker.com/r/1password/op). |
 | Tini | Debian `0.19.0-3+b8` | `Dockerfile`, [upstream](https://github.com/krallin/tini). |
 | Poetry | 2.5.1 | Dockerfile and `.github/actions/python/action.yml`. |
 | Hosted Python | 3.12.15 and 3.14.8 | CI compatibility checks. |
