@@ -39,6 +39,7 @@ class Principal:
         identity_revision (str): Immutable reviewed knowledge revision.
         run_id (str): Operator-assigned execution run.
         operations (tuple[str, ...]): Permitted named capabilities.
+        task_id (str | None): Optional operator-owned task attribution; absent on legacy policies.
     """
 
     certificate_sha256: str
@@ -46,6 +47,7 @@ class Principal:
     identity_revision: str
     run_id: str
     operations: tuple[str, ...]
+    task_id: str | None = None
 
 
 @frozen
@@ -55,11 +57,11 @@ class Credential:
 
     Attributes:
         reference (str): Exact 1Password field URI, never supplied by the agent.
-        bootstrap_env (str): Broker-only service account environment variable name.
+        bootstrap_env (str): Broker-only token selector, defaulting to the official service-account variable.
     """
 
     reference: str
-    bootstrap_env: str
+    bootstrap_env: str = "OP_SERVICE_ACCOUNT_TOKEN"
 
 
 @frozen

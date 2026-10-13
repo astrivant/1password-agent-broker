@@ -14,15 +14,62 @@ import pytest
 from agent_broker import contracts
 from agent_broker.approval import write_private
 from agent_broker.exceptions import Rejected
+from agent_broker.models import Credential
 from attrs import evolve
 
 if TYPE_CHECKING:
     from agent_broker.testing.scenario import Scenario
 
 
+def test_native_bootstrap_default(fixture: Scenario) -> None:
+    """
+    Accept existing explicit selectors and default omitted selectors to the native variable.
+
+    Args:
+        fixture (Scenario): Synthetic policy environment.
+
+    Returns:
+        None: Assert policy loading preserves both supported configuration forms.
+    """
+    path = fixture.root / "policy.json"
+    raw = json.loads(path.read_text())
+    del raw["credentials"]["alpha"]["bootstrap_env"]
+    del raw["principals"]["alpha"]["task_id"]
+    write_private(path, raw)
+    policy, _ = contracts.policy(path)
+    assert policy.credentials["alpha"] == Credential("op://synthetic/alpha/token")
+    assert policy.credentials["bravo"].bootstrap_env == "SYNTHETIC_UNUSED"
+    assert policy.principals["alpha"].task_id is None
+
+
+def test_noncanonical_request_is_rejected() -> None:
+    """
+    Convert UUID parsing errors into the same safe contract denial as schema errors.
+
+    Returns:
+        None: Assert a trailing newline cannot escape the request-validation boundary.
+    """
+    with pytest.raises(Rejected):
+        contracts.request({"request_id": "00000000-0000-0000-0000-000000000000\n", "operation": "health", "approval_id": "approval"})
+
+
 @pytest.mark.parametrize(
     "url",
-    ["http://example.test", "https://user:password@example.test", "https://example.test/?token=value", "https://example.test/#fragment"],
+    [
+        "http://example.test",
+        "https://user:password@example.test",
+        "https://example.test/?token=value",
+        "https://example.test/#fragment",
+        "https://example.test:invalid/",
+        "https://example.test:65536/",
+        "https://example.test:0/",
+        "https://[invalid/",
+        "https://example.test/?",
+        "https://example.test/#",
+        "https://@example.test/",
+        "https://example.test/\u00e9",
+        "https://example.test/\u007f",
+    ],
 )
 def test_policy_rejects_unsafe_destinations(fixture: Scenario, url: str) -> None:
     """

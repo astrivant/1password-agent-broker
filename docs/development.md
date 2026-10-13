@@ -2,29 +2,40 @@
 
 ## Environment and checks
 
-Use Python 3.12 or newer (excluding 3.14.1), Poetry 2.5.1, Git, and actionlint 1.7.12. Dependencies are pinned in `pyproject.toml` and `poetry.lock`; ordinary CI never re-resolves them.
+Use Python 3.12 or newer (excluding 3.14.1), Poetry 2.5.1, Node.js 26.10.0, Git, and actionlint 1.7.12. Python dependencies and documentation tools have committed lockfiles; ordinary CI never re-resolves them.
 
 ```sh
 poetry config virtualenvs.in-project true --local
 poetry install
+npm ci --prefix scripts/documentation --ignore-scripts --no-fund
 poetry run pre-commit install
 poetry run pre-commit run --all-files
 poetry run pytest -n 4 --cov=agent_broker --cov-report=term-missing
 poetry run agent-broker demo
 ```
 
-Keep the project's virtual environment first on `PATH` when invoking hooks or subprocess tests. The MCP subprocess test uses the current Python executable. Ruff, strict mypy, pydocstyle, pydoclint, SQLFluff, ShellCheck, shfmt, and actionlint cover the maintained languages. `scripts/documentation/contents.py` regenerates README navigation to a maximum of three heading levels.
+Select the project's `VIRTUAL_ENV` as well as putting its `bin` directory first on `PATH` when invoking hooks or subprocess tests. An inherited environment selector can override the executable you intended to use. The MCP subprocess test uses the current Python executable. Ruff, strict mypy, pydocstyle, pydoclint, SQLFluff, ShellCheck, shfmt, and actionlint cover the maintained languages. `scripts/documentation/contents.py` regenerates root and nested README navigation to a maximum of three heading levels.
+
+The `documentation-syntax` hook checks all Git-owned Markdown and standalone `.mmd`/`.mermaid` files with remark, KaTeX, and Mermaid's parser. It reports source locations without rewriting files or launching a browser. ESLint checks the JavaScript tool itself; `npm --prefix scripts/documentation test` runs its positive and negative regressions. CI runs the same hook and tests from the npm lockfile.
+
+Use `$...$` or dollar/backtick pairs for inline math, and `$$` blocks or `math` fences for display math. Escape literal dollars as `\$` or use `<span>$</span>`. Keep illustrative source inside ordinary code spans/fences. Backslash-only math delimiters are rejected because hosted Markdown does not reliably recognize them. Use fenced `mermaid` diagrams. See the [GitHub math contract](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/writing-mathematical-expressions), [GitLab math contract](https://docs.gitlab.com/user/markdown/#math-equations), and [Mermaid parser API](https://mermaid.js.org/config/usage.html#syntax-validation-without-rendering).
+
+Math validation deliberately uses KaTeX's strict portable subset. GitHub uses MathJax and GitLab uses KaTeX; this check does not claim identical engine support or validate mathematical truth. The lockfile overrides nested KaTeX copies to the patched direct version to address GHSA-238p-pmpm-9mq7. Mermaid syntax validation does not verify diagram layout or the host's installed Mermaid version. Preview changed equations and diagrams on the intended host before merging, and use an exported visual for unsupported presentation features.
 
 Python uses typed Google-style multiline docstrings, with `Returns: None` for ordinary void functions. Constructors document inputs and side effects without a return section, as required by pydoclint. The generic conversion helper retains `TypeVar` syntax because current pydocstyle cannot parse PEP 695 function type parameters; this does not alter its typed contract.
 
-SQLite transaction behavior is configured through the driver's `IMMEDIATE` isolation level. Reservation is an atomic `INSERT OR IGNORE` followed by a read in that write transaction. SQL remains in packaged `.sql` files and is linted independently.
+Add intent comments before significant blocks, loops, and branches, with a blank line separating logical blocks where the language permits. Explain the decision or invariant a maintainer must preserve: trust boundaries, transaction ordering, replay and cancellation semantics, resource ownership, bounded waits, and publication gates. Keep docstrings focused on the callable's contract and comments on the local implementation reason. Avoid narrating obvious syntax or repeating the docstring.
+
+Review comments alongside implementation and tests so they describe observed behavior, including uncertainty and failure paths. Apply the same practice to Python, SQL, shell, tests, and Helm templates. For comment-only changes, verify that executable structure and rendered manifests remain equivalent, then run the relevant repository checks. Edit maintained sources instead of generated output; preserve whitespace-sensitive template behavior.
+
+SQLite transaction behavior is configured through the driver's `IMMEDIATE` isolation level. Reservation is an atomic `INSERT ... ON CONFLICT DO NOTHING` followed by a read in that write transaction. SQL remains in packaged `.sql` files and is linted independently.
 
 ## Layout
 
 | Path | Responsibility |
 | --- | --- |
 | `pkg/agent_broker/` | Typed contracts, authority, durable ledger, credential provider, TLS and MCP adapters. |
-| `pkg/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite statements. |
+| `pkg/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite/PostgreSQL statements. |
 | `pkg/agent_broker/testing/` | Generated certificates and synthetic local service shared by demo/tests. |
 | `pkg/agent_broker/tests/` | Package-local security and integration regressions. |
 | `scripts/` | Documentation, CI redaction, and release operations. |
@@ -32,14 +43,16 @@ SQLite transaction behavior is configured through the driver's `IMMEDIATE` isola
 
 ## Containers
 
-The production image uses a non-root UID/GID 10001, Tini as PID 1, no development dependencies, a bundled official 1Password CLI, and an installed wheel. Tini forwards signals to the process group; the Python server stops accepting work and joins its owned threads. Use a private network, read-only root, dropped capabilities, and limits for a deployment.
+The production image uses a non-root UID/GID 10001, Tini as PID 1, no development dependencies, the official 1Password SDK, and an installed wheel. Debian provides the SDK's glibc and libssl3 native requirements. The build loads the SDK's native library and validates a synthetic reference offline. Tini forwards signals to the process group; the Python server stops accepting work and joins its owned threads. Use a private network, read-only root, dropped capabilities, and limits for a deployment.
 
 ```sh
 docker compose --profile demo run --build --rm demo
 docker compose --profile development run --build --rm development
 ```
 
-These profiles run synthetic work only and require no credentials. The development target contains the locked development tools. For a real broker, override the command with `agent-broker serve ... --op /usr/local/bin/op --host 0.0.0.0`, mount operator configuration and certificate files read-only, and give only UID 10001 a private writable ledger volume. Inject the service-account token through your runtime secret facility into the broker process alone. Never bake it into a Dockerfile or Compose file.
+These profiles run synthetic work only and require no credentials. The development target contains the locked development tools. For a real broker, override the command with `agent-broker serve ... --host 0.0.0.0`, mount operator configuration and certificate files read-only, and give only UID 10001 a private writable ledger volume. Inject the service-account token through your runtime secret facility into the broker process alone. Never bake it into a Dockerfile or Compose file.
+
+The SDK is pinned to 0.4.1 in `pyproject.toml` and `poetry.lock`. Its published wheels stop at CPython 3.13; Python 3.14 installs its source distribution with bundled native libraries. The package omits `py.typed`, so mypy follows its inline annotations through a scoped `follow_untyped_imports` override. Tests exercise the actual authentication and resolution adapters against a synthetic native boundary, plus real offline native reference validation. They never authenticate to a live account.
 
 ## CI and pinned tools
 
@@ -50,7 +63,6 @@ Pins outside Poetry's lockfile:
 | Component | Version | Source of truth |
 | --- | --- | --- |
 | Python container | 3.14.8 slim Trixie, digest pinned | `Dockerfile`, [Docker Official Image](https://hub.docker.com/_/python). |
-| 1Password CLI container | 2.40.0, digest pinned | `Dockerfile`, [official image](https://hub.docker.com/r/1password/op). |
 | Tini | Debian `0.19.0-3+b8` | `Dockerfile`, [upstream](https://github.com/krallin/tini). |
 | Poetry | 2.5.1 | Dockerfile and `.github/actions/python/action.yml`. |
 | Hosted Python | 3.12.15 and 3.14.8 | CI compatibility checks. |
@@ -69,12 +81,18 @@ System CA certificates and Debian security updates are installed from the pinned
 Before your first tag, install OpenSSL, Cosign, and authenticated `gh`, then run:
 
 ```sh
-bash scripts/release/setup-signing.sh OWNER/REPO /private/new-release-key-backup
+bash scripts/release/setup-signing.sh --repo OWNER/REPO --key-dir /private/release-key-backup
 ```
 
-The script generates a P-256 PEM key, imports it into Cosign, writes a private backup, removes the temporary PEM, and sends the signing key to the repository's `COSIGN_PRIVATE_KEY` secret through stdin. It prints only the backup location and public-key fingerprint. It refuses to overwrite an existing backup directory. The default key has an empty Cosign passphrase; protect the backup using encrypted storage and mode 0700. For an existing password-protected key, additionally configure `COSIGN_PASSWORD` in GitHub.
+The helper uses [Cosign's key management](https://docs.sigstore.dev/cosign/key_management/signing_with_self-managed_keys/) to create a password-protected key or validate and reuse an existing one. It sends `COSIGN_PRIVATE_KEY` and `COSIGN_PASSWORD` through [GitHub CLI stdin](https://cli.github.com/manual/gh_secret_set) to the explicitly selected repository. `--help` has no side effects. Omitting `--key-dir` selects `$XDG_DATA_HOME/1password-agent-broker/release-keys/OWNER/REPO`, with `$HOME/.local/share` as the base fallback.
 
-For a new project, exercise the first signed release with `v0.0.1` after hooks and main CI pass. For an existing release sequence, use its next compatible version; never move an existing tag. Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI signs checksums for the tested wheel and source distribution, verifies that signature, then uses `gh release create` to attach distributions, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
+The private directory holds `cosign.key`, `cosign.password`, `cosign.pub`, `fingerprint.txt` and a repository binding. The key and password use mode 0600 and the directory uses 0700; keep them together on encrypted storage outside Git. Keeping the password beside the encrypted key supports recovery but does not protect against someone who can read that directory. Ordinary output contains only status, the backup path and the public-key fingerprint. No real secrets are used by the synthetic checks.
+
+If either upload fails, rerun the same command with the same directory. Existing private-key bytes and password are retained; a different repository binding, invalid password, mismatched public key/fingerprint, linked key path or incomplete backup blocks upload. A directory lock excludes concurrent setup; after an unclean termination, confirm the prior process has stopped before removing its `.setup-signing.lock`. Restore incomplete backups from trusted copies rather than deleting them to trigger key generation. Key rotation is a separate maintainer decision, including updating independently trusted fingerprints.
+
+Earlier helper versions used positional `OWNER/REPO DIRECTORY` arguments and an empty password. Use the explicit flags above for the same directory. If that older backup has no `cosign.password`, create an empty private file there only when the key's original password was empty; otherwise restore its actual password. This preserves the original signing identity. The helper does not rotate or recover lost keys.
+
+For a new project, exercise the first signed release with `v0.0.1` after hooks and main CI pass. For an existing release sequence, use its next compatible version; never move an existing tag. Update package metadata, commit, and push a matching signed `vX.Y.Z` tag. CI packages the Helm archive alongside the tested wheel and source distribution, signs checksums including `SOURCE.txt`, and assembles a draft GitHub release. It downloads and verifies the complete attachment set before publishing. Interrupted drafts can be retried; published releases are never overwritten. Attachments include the archives, source/tag provenance, `SHA256SUMS`, its Sigstore signature bundle, the public key, and fingerprint. Publication is enabled only in the upstream repository by default; forks must deliberately adjust that guard. No PyPI upload is configured.
 
 Download all release files into one directory. Verify the public-key fingerprint against an independently trusted maintainer record, then:
 
@@ -85,6 +103,32 @@ sha256sum --check SHA256SUMS
 
 On macOS use `shasum -a 256 --check SHA256SUMS` for the second command. A synthetic signing check exercises these scripts in CI with temporary keys and a local GitHub stub. Cosign 3 requires a Sigstore bundle; the check prevents older signature-only flags from silently reaching a tag pipeline. This key-based release scheme does not publish to a transparency log. The public key attached to a release is convenient verification material, not its own trust anchor.
 
-Release acceptance includes the real tag pipeline: download its assets, authenticate the checksum bundle with the independently retained signing key, check every distribution hash, and run the installed wheel's demo. A queued workflow or a green main run alone does not verify release publication.
+A terminal tag job runs even if publication was skipped and verifies the complete downloaded release against the independently pinned signing-key fingerprint and expected source revision. Release acceptance includes the real tag pipeline: download its assets, authenticate the checksum bundle with the independently retained signing key, check every distribution hash, and run the installed wheel's demo. A queued workflow or a green main run alone does not verify release publication.
+
+Publication rejects missing, differently versioned or additional build archives before signing or creating a draft. Use a clean build output containing exactly the wheel, source distribution and Helm archive for the selected tag. `bash scripts/ci/checks/signing.sh` exercises setup and retry preservation offline; `bash scripts/ci/checks/release.sh` also requires those built archives and exercises signed publication through a local GitHub stub. CI runs both in the existing release-contract job.
 
 The initial upstream signing key fingerprint (SHA-256 of DER SubjectPublicKeyInfo) is `c025b0ffd4e676db5710697b756ed9b4a46025966b26faface444f3318c8513f`. Compare against a separately trusted copy of this record; downloading a replacement key and fingerprint from the same untrusted release is insufficient.
+
+## Downstream consumers
+
+After verifying an authorized release, update known consumer repositories through focused PRs. Track each repository, previous and target version, affected installation/deployment paths, PR head, pipeline URLs and next review action. Reuse an existing upgrade PR. Discover consumers from maintained manifests, integrations and maintainer records; a repository search alone does not prove the inventory is exhaustive. Keep private consumer names and access details in their owning private records.
+
+No external consumer inventory is currently verified by this repository. The integration surfaces to inspect are Python installations and lockfiles, MCP launch commands, Helm chart pins and values, and broker container image tags or digests. The chart requires an independently published broker image; the current release workflow does not publish one. Do not claim that shipping the chart upgrades or deploys an external service.
+
+Exercise each consumer's installation and compatibility checks, then inspect all applicable pipelines for its current PR revision. Resolve failures and recheck after every correction; older green runs, queued jobs and unexpected skips do not establish success. Where CI uses a merge checkout, bind its evidence to the reviewed head and tested merge revision. Finish with links and actual outcomes for every known consumer, retaining unresolved upgrades as explicit handoffs. The maintainer still controls merging and deployment; honor an explicit request that they will monitor CI themselves.
+
+## Chart validation
+
+Use Helm 4.3.0, kubeconform 0.8.0, and Node.js for Bitnami's pinned README generator. The pre-commit hook derives parameter tables and a structural schema from annotated `values.yaml`; `scripts/helm/schema.py` adds deployment constraints and embeds the packaged authorization schemas. Edit these inputs and regenerate, rather than editing `values.schema.json` or parameter tables. CI checks generated-file drift and the README updater's `--check` mode.
+
+`hypothesis-helm` 1.3.10 requires Python 3.13+ and pytest below 9. The isolated lock in `scripts/helm/` keeps that constraint out of the application's pytest 9 environment. Create its virtual environment with an absolute path so subprocess entry points retain the correct interpreter:
+
+```sh
+python3.14 -m venv "$PWD/scripts/helm/.venv"
+VIRTUAL_ENV="$PWD/scripts/helm/.venv" poetry -C scripts/helm install
+bash scripts/helm/check.sh
+```
+
+The chart job runs independently of Python tests and source builds, validates Kubernetes 1.30 schemas, exercises supported values with Hypothesis and hypothesis-helm, and compares source rendering with the packaged archive. Release-signing contract tests join the actual Python and chart artifacts afterward. The chart follows the public [Polyad chart layout](https://github.com/astrivant/polyad/tree/c446fa5f0dc8eaaec82b49e864e8ca86046c53d1/charts), using this project's top-level `helm/` convention: metadata, annotated values, generated schemas/README, grouped templates, NOTES, license, and concise reference overrides. No dependency lock is generated for an empty dependency set.
+
+PostgreSQL integration tests require an explicitly selected disposable database. Set `BROKER_TEST_POSTGRES=1` and native `PGHOST`, `PGPORT`, `PGDATABASE`, and `PGUSER` variables. Local synthetic containers may use `PGSSLMODE=disable`; production charts enforce certificate verification. CI provisions an isolated PostgreSQL 18.6 service for each Python-version test job. The tests create broker tables, use unique request IDs, and exercise cross-replica claims, cancellation, and recovery. Never point them at a production database.

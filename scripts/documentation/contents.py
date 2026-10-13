@@ -1,25 +1,29 @@
 """
-Regenerate the root README's bounded table of contents from its actual headings.
+Maintain bounded navigation in root and nested project READMEs.
 """
 
 from __future__ import annotations
 
+import argparse
 import re
+import subprocess
 from pathlib import Path
 
 
-def main() -> None:
+def contents(source: str) -> str:
     """
-    Update maintained markers, excluding fenced examples and headings below level three.
+    Render navigation from actual headings while excluding fenced examples.
+
+    Args:
+        source (str): README with exactly one navigation marker pair.
 
     Returns:
-        None: Write the README only when generated navigation changed.
+        str: README with a deterministic table of contents at most three levels deep.
     """
-    path = Path(__file__).resolve().parents[2] / "README.md"
-    source = path.read_text()
     rows = []
     fenced = False
 
+    # Ignore headings inside examples so copied Markdown does not enter the document navigation.
     for line in source.splitlines():
         if line.startswith("```"):
             fenced = not fenced
@@ -33,8 +37,37 @@ def main() -> None:
     result, count = re.subn(r"<!-- toc -->.*?<!-- /toc -->", generated, source, flags=re.DOTALL)
     if count != 1:
         raise ValueError("README must have one TOC marker pair")
-    if result != source:
-        path.write_text(result)
+    return result
+
+
+def main() -> None:
+    """
+    Discover maintained READMEs with Git, including non-ignored new chart documentation.
+
+    Returns:
+        None: Update navigation, or fail check mode on stale output.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parents[2]
+
+    # Discover tracked and new maintained files through Git, excluding installed dependencies and ignored outputs.
+    paths = (
+        subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=root, check=True, capture_output=True)
+        .stdout.decode()
+        .split("\0")
+    )
+    for name in sorted(set(paths)):
+        if Path(name).name != "README.md":
+            continue
+        path = root / name
+        source = path.read_text()
+        result = contents(source)
+        if result != source:
+            if args.check:
+                raise ValueError(f"Stale README contents: {name}")
+            path.write_text(result)
 
 
 if __name__ == "__main__":

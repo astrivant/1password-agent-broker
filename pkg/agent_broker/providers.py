@@ -7,10 +7,12 @@ from __future__ import annotations
 import os
 import ssl
 import subprocess
+import sys
 from http.client import HTTPException, HTTPSConnection
 from typing import TYPE_CHECKING, Protocol
 from urllib.parse import urlsplit
 
+from agent_broker.contracts import encode
 from agent_broker.exceptions import DestinationFailure, ProviderFailure
 
 if TYPE_CHECKING:
@@ -58,23 +60,12 @@ class Executor(Protocol):
 
 class OnePasswordProvider:
     """
-    Read exact fields through the official CLI using a broker-only service account.
+    Resolve fields with the official SDK in a bounded, broker-owned worker process.
     """
-
-    def __init__(self, executable: Path) -> None:
-        """
-        Select an operator-installed executable, never a client-controlled command.
-
-        Args:
-            executable (Path): Absolute path to the trusted op executable.
-        """
-        if not executable.is_absolute() or not executable.is_file():
-            raise ProviderFailure("1Password CLI unavailable")
-        self.executable = executable
 
     def resolve(self, credential: Credential) -> str:
         """
-        Resolve a field without shell expansion, secret arguments, or diagnostic forwarding.
+        Pass one explicit service account and field to the SDK through a private input pipe.
 
         Args:
             credential (Credential): Policy-selected field reference.
@@ -83,20 +74,22 @@ class OnePasswordProvider:
             str: Nonempty, bounded single-line credential.
 
         Raises:
-            ProviderFailure: Bootstrap, CLI execution, or credential shape is invalid.
+            ProviderFailure: Bootstrap, SDK execution, timeout, or credential shape is invalid.
         """
         token = os.environ.get(credential.bootstrap_env)
-        if not token:
+        if not token or len(token) > 65536:
             raise ProviderFailure("Credential provider unavailable")
-        environment = {"OP_SERVICE_ACCOUNT_TOKEN": token, "OP_BIOMETRIC_UNLOCK_ENABLED": "false"}
+        environment = {}
 
-        # Preserve only platform support variables, excluding agent and alternate account credentials.
+        # The worker receives one token on stdin, never ambient provider or desktop-session credentials.
         for name in ("PATH", "HOME", "SYSTEMROOT", "TMPDIR"):
             if name in os.environ:
                 environment[name] = os.environ[name]
         try:
+            # Isolate the SDK native session so the parent can bound its lifetime and reap it on timeout.
             completed = subprocess.run(
-                [str(self.executable), "read", credential.reference, "--no-newline"],
+                [sys.executable, "-I", "-m", "agent_broker.sdk_worker"],
+                input=encode({"token": token, "reference": credential.reference}),
                 env=environment,
                 capture_output=True,
                 timeout=10,
@@ -105,9 +98,22 @@ class OnePasswordProvider:
             secret = completed.stdout.decode("utf-8")
         except (OSError, subprocess.SubprocessError, UnicodeError):
             raise ProviderFailure("Credential provider unavailable") from None
-        if completed.returncode != 0 or not secret or len(secret) > 16384 or any(character.isspace() for character in secret):
+        if completed.returncode != 0 or not valid_secret(secret):
             raise ProviderFailure("Credential provider unavailable")
         return secret
+
+
+def valid_secret(secret: str) -> bool:
+    """
+    Accept only bounded visible ASCII credentials suitable for an HTTP bearer header.
+
+    Args:
+        secret (str): Resolved credential kept within the broker boundary.
+
+    Returns:
+        bool: Whether the value can be passed to the fixed health executor.
+    """
+    return 0 < len(secret) <= 16384 and all(33 <= ord(character) <= 126 for character in secret)
 
 
 class HealthExecutor:
@@ -143,7 +149,9 @@ class HealthExecutor:
         try:
             connection.request("GET", url.path or "/", headers={"Authorization": f"Bearer {secret}"})
             return connection.getresponse().status
+
         except (OSError, HTTPException, ValueError):
+            # A lost response does not establish that the destination rejected the authenticated request.
             raise DestinationFailure("Destination outcome unknown") from None
         finally:
             connection.close()

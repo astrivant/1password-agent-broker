@@ -1,8 +1,8 @@
 # 1Password Agent Broker
 
-Let agents use credentials without handing them the keys. Approve a capability, let the broker perform the operation, and return the result to the agent. Credential access and authorization stay in a service you control.
-
 [![Python coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fastrivant%2F1password-agent-broker%2Fcoverage%2Fbadges%2Fcoverage.json)](https://github.com/astrivant/1password-agent-broker/actions/workflows/ci.yml)
+
+Let agents use credentials without handing them the keys. Approve a capability, let the broker perform the operation, and return the result to the agent. Credential access and authorization stay in a service you control.
 
 **Contents**
 
@@ -21,6 +21,7 @@ Let agents use credentials without handing them the keys. Approve a capability, 
 - [Documentation](#documentation)
   - [Deployment and security](#deployment-and-security)
   - [Development and releases](#development-and-releases)
+- [Kubernetes and monitoring](#kubernetes-and-monitoring)
 
 <!-- /toc -->
 
@@ -46,7 +47,8 @@ Point your agent at [SKILL.md](SKILL.md) for the supported setup, validation, an
 - **Keep credentials out of agent responses.** The broker resolves an approved credential and uses it for a fixed operation.
 - **Control each identity's access.** Workload certificates identify the caller; grants bind approval to a request, capability, policy revision, and expiry.
 - **Retry without repeating completed work.** Recorded results survive a lost response. Uncertain outcomes remain visible instead of being silently resubmitted.
-- **Keep an operational record.** Dispatched requests have a durable audit and replay ledger, without storing credential values.
+- **Attribute operations to reviewed work.** Operator policy binds identity, revision, run, and optional task IDs to workload certificates. Denials and replay outcomes retain a validated audit record.
+- **Recover results after approval expires.** Inspect an existing request without renewing its grant or repeating its operation.
 - **Connect through MCP.** An agent-facing stdio adapter delegates execution to the authenticated broker.
 
 The first capability is an authenticated HTTPS health check. Provider and executor interfaces allow additional reviewed capabilities; agents cannot supply arbitrary secret references, URLs, headers, or HTTP methods.
@@ -61,7 +63,7 @@ flowchart LR
     M -->|Mutual TLS, capability request| B[Broker]
     P[Operator policy and approvals] --> B
     B --> L[Durable audit and replay ledger]
-    B -->|Approved field reference| O[1Password CLI]
+    B -->|Approved field reference| O[1Password SDK worker]
     O -->|In-memory credential| B
     B -->|Fixed HTTPS operation| S[Approved service]
 ```
@@ -78,7 +80,7 @@ For a wholly local developer environment, consider [1Password's native Environme
 
 ### Connect 1Password and an agent
 
-Install the [official 1Password CLI](https://www.1password.dev/cli/get-started), create a narrowly scoped service account, and follow [operator setup](docs/operations.md). It covers policy, certificates, the broker process, request approvals, and MCP configuration.
+The broker includes the [official 1Password Python SDK](https://github.com/1Password/onepassword-sdk-python). Create a narrowly scoped service account and follow [operator setup](docs/operations.md). It covers platform requirements, policy, certificates, the broker process, request approvals, and MCP configuration.
 
 ### Review access and recover work
 
@@ -98,6 +100,10 @@ Use the [operations guide](docs/operations.md) for revocation, credential rotati
 - [Development](docs/development.md): local checks, containers, and pinned tools.
 - [Signed releases](docs/development.md#release-signing): key setup, publishing, and artifact verification.
 - [Contributing](CONTRIBUTING.md) and [agent instructions](SKILL.md).
-- [Design proposal: RFC #8](https://github.com/astrivant/product-research/pull/8).
+- [Current RFC review](docs/rfc-review.md): implemented gaps, evidence, and remaining integration gates for [RFC #55](https://github.com/astrivant/product-research/pull/55).
 
-This is an independent Astrivant project using 1Password's supported CLI. It is not an official 1Password product.
+This is an independent Astrivant project using 1Password's official SDK. It is not an official 1Password product.
+
+## Kubernetes and monitoring
+
+The [Helm chart](helm/1password-agent-broker/README.md) supports two broker replicas with a shared PostgreSQL replay ledger, validated ConfigMaps, and private Flask metrics/status endpoints. See [operations](docs/operations.md#kubernetes-and-high-availability) for database durability, image/Secret prerequisites, CRD design, and sizing guidance.

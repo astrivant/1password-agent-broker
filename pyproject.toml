@@ -1,21 +1,47 @@
 [project]
 name = "1password-agent-broker"
-version = "0.0.1"
+version = "0.1.0"
 description = "Let agents use approved 1Password-backed capabilities without receiving secret values"
 readme = "README.md"
 requires-python = ">=3.12,!=3.14.1,<4"
 license = "Apache-2.0"
-authors = [{name = "Astrivant"}]
-dependencies = ["attrs==26.1.0", "cattrs==26.2.1", "jsonschema==4.26.0", "cryptography==50.0.2", "mcp==2.3.0", "opentelemetry-api==1.45.1"]
-classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Topic :: Security", "Programming Language :: Python :: 3"]
+authors = [{ name = "Astrivant" }]
+dependencies = [
+    "attrs==26.1.0",
+    "cattrs==26.2.1",
+    "jsonschema==4.26.0",
+    "cryptography==50.0.2",
+    "Flask==3.1.3",
+    "cheroot==11.1.2",
+    "mcp==2.3.0",
+    "onepassword-sdk==0.4.1",
+    "opentelemetry-api==1.45.1",
+    "prometheus-client==0.26.0",
+    "psycopg[binary]==3.3.6",
+    "psycopg-pool==3.3.3",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3",
+]
+
 [project.urls]
 Repository = "https://github.com/astrivant/1password-agent-broker"
 Documentation = "https://github.com/astrivant/1password-agent-broker/blob/main/docs/operations.md"
+
 [project.scripts]
 agent-broker = "agent_broker.cli:main"
+
+[build-system]
+requires = ["poetry-core==2.5.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
-packages = [{include = "agent_broker", from = "pkg"}]
-include = [{path = "pkg/agent_broker/resources", format = ["sdist", "wheel"]}]
+packages = [{ include = "agent_broker", from = "pkg" }]
+include = [{ path = "pkg/agent_broker/resources", format = ["sdist", "wheel"] }]
+
 [tool.poetry.group.dev.dependencies]
 ruff = "0.17.0"
 mypy = "2.4.0"
@@ -29,31 +55,43 @@ sqlfluff = "4.4.0"
 types-jsonschema = "4.26.0.20261006"
 shellcheck-py = "0.11.0.1"
 shfmt-py = "4.2.0"
-[build-system]
-requires = ["poetry-core==2.5.0"]
-build-backend = "poetry.core.masonry.api"
+PyYAML = "6.0.3"
+types-PyYAML = "6.0.12.20260906"
+hypothesis = "6.169.0"
+
 [tool.ruff]
 line-length = 140
 target-version = "py312"
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "D", "TC"]
 ignore = ["D200", "D202", "D212"]
 extend-select = ["D213"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true
 disallow_any_explicit = true
 files = ["pkg", "scripts"]
+
+[[tool.mypy.overrides]]
+module = ["onepassword.*"]
+follow_untyped_imports = true
+
 [tool.pydocstyle]
 convention = "google"
 add-ignore = ["D200", "D202", "D212"]
 add-select = ["D213"]
 match = ".*\\.py"
+
 [tool.pydoclint]
+exclude = "\\.git|\\.tox|\\.venv|\\.cache"
 allow-init-docstring = true
 style = "google"
 skip-checking-short-docstrings = false
@@ -63,11 +101,14 @@ check-return-types = true
 check-arg-order = true
 require-return-section-when-returning-nothing = true
 skip-checking-raises = true
+
 [tool.pytest.ini_options]
 testpaths = ["pkg/agent_broker/tests"]
 addopts = "-ra -n auto --import-mode=importlib"
+
 [tool.coverage.run]
 source = ["agent_broker"]
+
 [tool.sqlfluff.core]
 dialect = "sqlite"
 max_line_length = 140

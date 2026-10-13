@@ -16,4 +16,6 @@ docker run --rm --user "$(id -u):$(id -g)" \
     fs --cache-dir /cache --scanners vuln,secret \
     --skip-dirs .git --skip-dirs .venv --skip-dirs .cache --skip-dirs dist \
     --format json --output /raw/report.json /workspace
+
+# Publish only the redacted allowlist; raw scanner matches are deleted with the private temporary directory.
 python scripts/ci/checks/trivy_report.py "$raw_directory/report.json" "$output_directory/security.json"

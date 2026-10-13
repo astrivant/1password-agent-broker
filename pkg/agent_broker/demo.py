@@ -25,6 +25,8 @@ def run() -> dict[str, object]:
         alpha, bravo = fixture.request(), fixture.request("bravo")
         first = fixture.clients["alpha"].call(data(alpha))
         second = fixture.clients["bravo"].call(data(bravo))
+
+        # Reuse the exact request identity, then try cross-identity and extra-field inputs against the same boundary.
         replay = fixture.clients["alpha"].call(data(alpha))
         crossed = fixture.clients["alpha"].call(data(bravo))
         injected = fixture.clients["alpha"].call({**data(alpha), "url": "https://untrusted.invalid"})
@@ -51,6 +53,8 @@ def run() -> dict[str, object]:
             )
         ):
             raise RuntimeError("Synthetic demonstration failed")
+
+        # Check both returned evidence and durable storage for the generated canaries before reporting success.
         if any(token.encode() in output or token.encode() in stored for token in fixture.provider.secrets.values()):
             raise RuntimeError("Synthetic secret exposure detected")
         return summary

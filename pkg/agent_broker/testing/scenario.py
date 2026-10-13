@@ -144,9 +144,13 @@ def scenario(root: Path) -> Iterator[Scenario]:
     context.load_cert_chain(root / "server.pem", root / "server.key")
     destination = TLSServer(("127.0.0.1", 0), Destination, context)
 
+    # Start the destination first so policy captures its real ephemeral port and teardown drains in reverse order.
     with running(destination):
         policy = Policy(
-            {name: Principal(fingerprints[name], name, "reviewed-v1", "demo-run", (f"{name}-health",)) for name in ("alpha", "bravo")},
+            {
+                name: Principal(fingerprints[name], name, "reviewed-v1", "demo-run", (f"{name}-health",), "demo-task")
+                for name in ("alpha", "bravo")
+            },
             {name: Credential(f"op://synthetic/{name}/token", "SYNTHETIC_UNUSED") for name in ("alpha", "bravo")},
             {f"{name}-health": Operation(name, f"https://127.0.0.1:{destination.server_port}/{name}") for name in ("alpha", "bravo")},
         )

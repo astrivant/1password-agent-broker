@@ -98,6 +98,7 @@ def structure(value: object, model: type[T], name: str) -> T:  # noqa: UP047
         Rejected: Any key, value, or structural constraint fails.
     """
     try:
+        # Reject structural and value constraints before conversion can coerce untrusted input.
         validate(value, schema(name))
         return CONVERTER.structure(value, model)
     except (ValidationError, BaseValidationError, TypeError, ValueError):
@@ -118,7 +119,11 @@ def request(value: object) -> Request:
         Rejected: The request is invalid or has a noncanonical UUID.
     """
     item = structure(value, Request, "request")
-    if str(UUID(item.request_id)) != item.request_id:
+    try:
+        canonical = str(UUID(item.request_id))
+    except ValueError:
+        raise Rejected("Invalid request ID") from None
+    if canonical != item.request_id:
         raise Rejected("Invalid request ID")
     return item
 
@@ -163,15 +168,28 @@ def policy(path: Path) -> tuple[Policy, str]:
     if len(certificates) != len(set(certificates)):
         raise Rejected("Certificates must have unique owners")
 
+    # Schema-valid names still need cross-reference checks before they can confer authority.
     for principal in item.principals.values():
         if not set(principal.operations).issubset(item.operations):
             raise Rejected("Unknown capability")
 
+    # Only fixed HTTPS destinations are allowed; credentials cannot be redirected through model input.
     for operation in item.operations.values():
-        url = urlsplit(operation.url)
-        if operation.credential not in item.credentials or url.scheme != "https" or not url.hostname:
+        try:
+            url = urlsplit(operation.url)
+            port = url.port
+        except ValueError:
+            raise Rejected("Invalid capability destination") from None
+        if (
+            operation.credential not in item.credentials
+            or url.scheme != "https"
+            or not url.hostname
+            or port == 0
+            or not operation.url.isascii()
+            or any(ord(character) < 33 or ord(character) == 127 for character in operation.url)
+        ):
             raise Rejected("Invalid capability destination")
-        if url.username or url.password or url.query or url.fragment:
+        if url.username is not None or url.password is not None or "?" in operation.url or "#" in operation.url:
             raise Rejected("Destination contains forbidden URL components")
     return item, digest(raw)
 

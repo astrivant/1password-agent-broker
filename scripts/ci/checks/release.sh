@@ -1,32 +1,69 @@
 #!/usr/bin/env bash
-# Verify key setup and signed release artifacts without touching GitHub resources.
+# Verify signed chart/Python attachments and fail-closed publication with a local GitHub stub.
 # repository_root::cwd -> ret::exit_code
 set -euo pipefail
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
-mkdir "$scratch/bin" "$scratch/dist"
-# This stub consumes secret input without persisting it or making network requests.
-cat >"$scratch/bin/gh" <<'STUB'
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ $1 == secret && $2 == set ]]; then
-    cat >/dev/null
-elif [[ $1 == release && $2 == create ]]; then
-    echo 'Synthetic release request accepted by local test stub'
-else
-    exit 2
-fi
-STUB
+mkdir "$scratch/bin" "$scratch/dist" "$scratch/uploads"
+# Reuse the same independently linted host stub for setup and release contract checks.
+cp scripts/ci/fixtures/release-gh.sh "$scratch/bin/gh"
 chmod +x "$scratch/bin/gh"
-PATH="$scratch/bin:$PATH" bash scripts/release/setup-signing.sh synthetic/repository "$scratch/keys"
-cp dist/*.whl dist/*.tar.gz "$scratch/dist/"
-export COSIGN_PRIVATE_KEY
+bash scripts/ci/checks/signing.sh
+export GH_STUB_KEYS="$scratch/keys" GH_STUB_CALLS="$scratch/secret-calls"
+PATH="$scratch/bin:$PATH" bash scripts/release/setup-signing.sh --repo synthetic/repository --key-dir "$GH_STUB_KEYS"
+cp dist/*.whl dist/*.tar.gz dist/*.tgz "$scratch/dist/"
+export COSIGN_PRIVATE_KEY COSIGN_PASSWORD
 COSIGN_PRIVATE_KEY=$(cat "$scratch/keys/cosign.key")
+COSIGN_PASSWORD=$(cat "$scratch/keys/cosign.password")
+export GH_STUB_ASSETS="$scratch/uploads"
 release_script="$PWD/scripts/release/publish.sh"
+verify_script="$PWD/scripts/release/verify.sh"
+# Require an unambiguous current build instead of silently selecting the first retained wheel.
+shopt -s nullglob
+wheels=(dist/*.whl)
+[[ ${#wheels[@]} -eq 1 ]] || {
+    echo 'Expected exactly one built wheel' >&2
+    exit 1
+}
+version=${wheels[0]#dist/1password_agent_broker-}
+version=${version%-py3-none-any.whl}
 (
     cd "$scratch"
-    GITHUB_REF_NAME=v0.1.0 GITHUB_REPOSITORY=synthetic/repository GITHUB_SHA=synthetic-commit \
-        PATH="$scratch/bin:$PATH" bash "$release_script"
-    cd dist
-    shasum -a 256 --check verification/SHA256SUMS
+    export GITHUB_REF_NAME="v$version" GITHUB_REPOSITORY=synthetic/repository GITHUB_SHA=synthetic-commit
+    export PATH="$scratch/bin:$PATH"
+    # A retained older build must be rejected before signing or creating a draft.
+    touch dist/stale.whl
+    if bash "$release_script"; then
+        echo 'Stale build output was accepted' >&2
+        exit 1
+    fi
+    test -z "$(ls -A "$GH_STUB_ASSETS")"
+    rm dist/stale.whl
+
+    # The right archive count is insufficient when a build belongs to another version.
+    mv "dist/1password_agent_broker-$version-py3-none-any.whl" dist/incorrect-version.whl
+    if bash "$release_script"; then
+        echo 'Wrong-version build output was accepted' >&2
+        exit 1
+    fi
+    test -z "$(ls -A "$GH_STUB_ASSETS")"
+    mv dist/incorrect-version.whl "dist/1password_agent_broker-$version-py3-none-any.whl"
+    bash "$release_script"
+    test -f "$GH_STUB_ASSETS/published"
+    fingerprint=$(openssl pkey -pubin -in "$GH_STUB_ASSETS/cosign.pub" -outform DER 2>/dev/null | openssl dgst -sha256)
+    EXPECTED_RELEASE_KEY_FINGERPRINT="${fingerprint##* }" bash "$verify_script"
+
+    # A valid bundled key is insufficient unless it matches the independently supplied trust anchor.
+    if EXPECTED_RELEASE_KEY_FINGERPRINT=untrusted bash "$verify_script"; then
+        echo 'Untrusted signing key was accepted' >&2
+        exit 1
+    fi
+    rm "$GH_STUB_ASSETS/published"
+
+    # Corruption must block the final publish action, not merely produce a diagnostic after publication.
+    if GH_STUB_CORRUPT=1 bash "$release_script"; then
+        echo 'Corrupted downloaded artifact was accepted' >&2
+        exit 1
+    fi
+    test ! -e "$GH_STUB_ASSETS/published"
 )

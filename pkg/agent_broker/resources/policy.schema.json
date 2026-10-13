@@ -38,6 +38,13 @@
             },
             "uniqueItems": true,
             "maxItems": 100
+          },
+          "task_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$"
           }
         },
         "required": [
@@ -70,8 +77,7 @@
           }
         },
         "required": [
-          "reference",
-          "bootstrap_env"
+          "reference"
         ],
         "additionalProperties": false
       },

@@ -1,0 +1,153 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "broker.name" . }}
+  labels:
+    {{- include "broker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 3
+  # Retain ready capacity while each replacement starts and passes readiness.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "broker.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "broker.selector" . | nindent 8 }}
+      annotations:
+        # Roll pods when the reviewed policy or grants change, while retaining the mounted configuration source.
+        checksum/configuration: {{ include (print $.Template.BasePath "/configuration/configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 90
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        # Require distinct nodes so a single node loss cannot remove every replica.
+        - maxSkew: 1
+          minDomains: 2
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              {{- include "broker.selector" . | nindent 14 }}
+      containers:
+        - name: broker
+          image: {{ printf "%s%s" .Values.image.repository (ternary (printf "@%s" .Values.image.digest) (printf ":%s" .Values.image.tag) (ne .Values.image.digest "")) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - agent-broker
+            - serve
+            - --host=0.0.0.0
+            - --port=8443
+            - --metrics-host=0.0.0.0
+            - --metrics-port=9090
+            - --storage=postgresql
+            - --capacity={{ .Values.capacity }}
+            - --policy=/etc/broker/config/policy.json
+            - --approvals=/etc/broker/config/approvals.json
+            - --cert=/etc/broker/tls/tls.crt
+            - --key=/etc/broker/tls/tls.key
+            - --client-ca=/etc/broker/tls/ca.crt
+            {{- if .Values.secrets.destinationCA }}
+            - --destination-ca=/etc/broker/destination/ca.crt
+            {{- end }}
+          env:
+            - name: OP_SERVICE_ACCOUNT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.provider | quote }}
+                  key: OP_SERVICE_ACCOUNT_TOKEN
+            {{- range $name := list "PGHOST" "PGPORT" "PGDATABASE" "PGUSER" "PGPASSWORD" }}
+            - name: {{ $name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.postgresql | quote }}
+                  key: {{ $name }}
+            {{- end }}
+            - name: PGSSLMODE
+              value: verify-full
+            - name: PGSSLROOTCERT
+              value: /etc/broker/postgresql/ca.crt
+          ports:
+            - name: https
+              containerPort: 8443
+            - name: metrics
+              containerPort: 9090
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: metrics
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: metrics
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            timeoutSeconds: 8
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: configuration
+              mountPath: /etc/broker/config
+              readOnly: true
+            - name: tls
+              mountPath: /etc/broker/tls
+              readOnly: true
+            - name: postgresql
+              mountPath: /etc/broker/postgresql
+              readOnly: true
+            - name: temporary
+              mountPath: /tmp
+            {{- if .Values.secrets.destinationCA }}
+            - name: destination
+              mountPath: /etc/broker/destination
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: configuration
+          configMap:
+            name: {{ include "broker.name" . }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.secrets.tls | quote }}
+            defaultMode: 0440
+        - name: postgresql
+          secret:
+            secretName: {{ .Values.secrets.postgresql | quote }}
+            defaultMode: 0440
+            items:
+              - key: ca.crt
+                path: ca.crt
+        - name: temporary
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+        {{- if .Values.secrets.destinationCA }}
+        - name: destination
+          secret:
+            secretName: {{ .Values.secrets.destinationCA | quote }}
+            defaultMode: 0440
+        {{- end }}

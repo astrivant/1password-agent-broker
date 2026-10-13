@@ -56,17 +56,19 @@ def test_stdio_subprocess(fixture: Scenario) -> None:
             async with stdio_client(parameters, errlog=diagnostics) as (reader, writer), ClientSession(reader, writer) as session:
                 await session.initialize()
                 tools = await session.list_tools()
-                assert {tool.name for tool in tools.tools} == {"execute_approved", "cancel_approved"}
+                assert {tool.name for tool in tools.tools} == {"execute_approved", "cancel_approved", "inspect_approved"}
                 assert all(tool.output_schema for tool in tools.tools)
                 payload = contracts.data(fixture.request())
                 first = await session.call_tool("execute_approved", payload)
                 replay = await session.call_tool("execute_approved", payload)
+                status = await session.call_tool("inspect_approved", payload)
                 denied = await session.call_tool("execute_approved", {**payload, "reference": "op://other/item/secret"})
                 assert not first.is_error and first.structured_content is not None
                 assert first.structured_content["code"] == "healthy"
                 assert replay.structured_content is not None and replay.structured_content["replayed"] is True
+                assert status.structured_content == replay.structured_content
                 assert denied.is_error
-                observed = json.dumps([first.model_dump(), replay.model_dump(), denied.model_dump()])
+                observed = json.dumps([first.model_dump(), replay.model_dump(), status.model_dump(), denied.model_dump()])
             diagnostics.seek(0)
             observed += diagnostics.read()
         assert not any(token in observed for token in fixture.provider.secrets.values())

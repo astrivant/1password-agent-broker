@@ -38,10 +38,13 @@ def parser() -> argparse.ArgumentParser:
     serve = commands.add_parser("serve", help="Start the operator-owned HTTPS broker")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8443)
-    serve.add_argument("--database", type=Path, required=True)
+    serve.add_argument("--storage", choices=("sqlite", "postgresql"), default="sqlite")
+    serve.add_argument("--database", type=Path, help="Required SQLite path; PostgreSQL uses native PG environment settings")
+    serve.add_argument("--metrics-host", default="127.0.0.1")
+    serve.add_argument("--metrics-port", type=int, default=9090)
+    serve.add_argument("--capacity", type=int, default=8)
     serve.add_argument("--client-ca", type=Path, required=True)
     serve.add_argument("--destination-ca", type=Path)
-    serve.add_argument("--op", type=Path, required=True, help="Absolute trusted 1Password CLI path")
     grant = commands.add_parser("approve", help="Create one exact operator-approved request")
     grant.add_argument("--principal", required=True)
     grant.add_argument("--operation", required=True)
@@ -88,10 +91,9 @@ def serve(args: argparse.Namespace) -> None:
     """
     contracts.policy(args.policy)
     contracts.approvals(args.approvals)
-    broker = Broker(
-        args.policy, args.approvals, Ledger(args.database, export), OnePasswordProvider(args.op), HealthExecutor(args.destination_ca)
-    )
-    server = BrokerServer((args.host, args.port), broker, args.cert, args.key, args.client_ca)
+    if (args.storage == "sqlite") != (args.database is not None):
+        raise Rejected("SQLite requires a path; PostgreSQL uses native PG settings")
+    ledger = Ledger(args.database, export)
     stop = threading.Event()
 
     def shutdown(signum: int, frame: FrameType | None) -> None:
@@ -107,10 +109,26 @@ def serve(args: argparse.Namespace) -> None:
         """
         stop.set()
 
-    for signum in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(signum, shutdown)
-    with running(server):
-        stop.wait()
+    try:
+        broker = Broker(args.policy, args.approvals, ledger, OnePasswordProvider(), HealthExecutor(args.destination_ca))
+        server = BrokerServer(
+            (args.host, args.port),
+            broker,
+            args.cert,
+            args.key,
+            args.client_ca,
+            (args.metrics_host, args.metrics_port),
+            args.capacity,
+        )
+
+        # Signal handlers only notify the owner; listener shutdown runs outside the serving thread.
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(signum, shutdown)
+        with running(server):
+            stop.wait()
+    finally:
+        # The running context drains handlers before their shared storage pool is closed.
+        ledger.close()
 
 
 def main() -> int:

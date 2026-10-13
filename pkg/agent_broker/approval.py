@@ -29,6 +29,8 @@ def write_private(path: Path, value: object) -> None:
     Returns:
         None: Commit a complete file; callers serialize concurrent configuration edits.
     """
+
+    # Replace within the same directory so readers see either complete version, with no public intermediate file.
     descriptor, temporary = tempfile.mkstemp(prefix=".broker-", dir=path.parent)
     try:
         with os.fdopen(descriptor, "wb") as stream:
@@ -62,6 +64,8 @@ def approve(policy_path: Path, approvals_path: Path, principal: str, operation: 
     if principal not in policy.principals or operation not in policy.principals[principal].operations or not 1 <= ttl <= 3600:
         raise Rejected("Invalid approval")
     grants = contracts.approvals(approvals_path) if approvals_path.exists() else {}
+
+    # Fresh request and approval IDs bind this grant to one invocation and the reviewed policy content.
     request = Request(str(uuid4()), operation, str(uuid4()))
     grants[request.approval_id] = Approval(request.request_id, principal, operation, revision, int(time.time()) + ttl)
     write_private(approvals_path, {name: contracts.data(grant) for name, grant in grants.items()})
