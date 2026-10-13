@@ -5,6 +5,7 @@ Run two certificate-authenticated broker replicas with a shared PostgreSQL repla
 <!-- toc -->
 
 - [Operation](#operation)
+- [Configuration references](#configuration-references)
 - [Parameters](#parameters)
   - [Deployment](#deployment)
   - [Operator configuration](#operator-configuration)
@@ -31,6 +32,10 @@ kubectl -n broker rollout status deployment/broker-broker --timeout=180s
 
 The chart is packaged as a versioned `.tgz` alongside the Python release, covered by the signed checksum manifest. Verify the downloaded manifest against an independently trusted key before installing the archive. There are no chart dependencies, so no dependency lock is needed. Future dependencies must have a committed lock and use `helm dependency build` in validation and packaging.
 
+## Configuration references
+
+Browse the [configuration reference index](references/README.md) for values overlays, their intended use, and installation instructions. Start with the [HA deployment reference](references/ha/README.md) to configure two replicas and separate client and monitoring namespaces. Each reference documents its own annotated overrides through the same Bitnami hook as this chart; unspecified settings inherit the defaults below.
+
 ## Parameters
 
 ### Deployment
@@ -39,7 +44,7 @@ The chart is packaged as a versioned `.tgz` alongside the Python release, covere
 | --------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------- |
 | `replicaCount`              | Broker replicas on distinct nodes; at least two for HA                        | `2`                                       |
 | `image.repository`          | Operator-published image built from the matching source revision              | `registry.example/1password-agent-broker` |
-| `image.tag`                 | Immutable release tag; use digest for stronger provenance                     | `0.1.0`                                   |
+| `image.tag`                 | Immutable release tag; use digest for stronger provenance                     | `0.1.1`                                   |
 | `image.digest`              | Optional sha256 digest overriding the tag                                     | `""`                                      |
 | `image.pullPolicy`          | Kubernetes image pull policy                                                  | `IfNotPresent`                            |
 | `capacity`                  | Concurrent executions per pod; two additional slots are reserved for recovery | `8`                                       |

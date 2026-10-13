@@ -7,6 +7,14 @@ mkdir -p dist .cache/helm
 helm lint "$chart"
 helm template broker "$chart" --kube-version 1.30.0 >.cache/helm/rendered.yaml
 kubeconform -strict -summary -kubernetes-version 1.30.0 .cache/helm/rendered.yaml
+
+# Exercise documented overlays against the same chart schema and Kubernetes contract as the defaults.
+for values in "$chart"/references/*/values.yaml; do
+    helm lint "$chart" --values "$values"
+    helm template broker "$chart" --values "$values" --kube-version 1.30.0 >.cache/helm/reference.yaml
+    kubeconform -strict -summary -kubernetes-version 1.30.0 .cache/helm/reference.yaml
+done
+
 poetry run pytest -n 2 -q pkg/agent_broker/tests/test_helm.py
 # The separate lock retains the application project's newer pytest version.
 scripts/helm/.venv/bin/python scripts/helm/.venv/bin/hypothesis-helm test "$chart" \
