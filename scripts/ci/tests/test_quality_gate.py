@@ -101,7 +101,6 @@ def test_gate_matches_workflow_and_branch_policy() -> None:
     policy = next(branch["protection"] for branch in settings["branches"] if branch["name"] == "main")
     assert policy["required_status_checks"] == {
         "strict": True,
-        "contexts": [],
         "checks": [{"context": gate["name"], "app_id": 15368}],
     }
     assert policy["required_pull_request_reviews"]["required_approving_review_count"] == 1
@@ -111,3 +110,16 @@ def test_gate_matches_workflow_and_branch_policy() -> None:
     assert policy["restrictions"] is None
     assert policy["allow_force_pushes"] is False
     assert policy["allow_deletions"] is False
+
+
+def test_app_bound_checks_do_not_include_legacy_contexts() -> None:
+    """
+    Reject the mutually exclusive status-check fields refused by GitHub's API.
+
+    Returns:
+        None: The policy uses only the app-bound form of required status checks.
+    """
+    settings = yaml.safe_load((ROOT / ".github/settings.yml").read_text())
+    for branch in settings["branches"]:
+        checks = branch["protection"]["required_status_checks"]
+        assert not {"contexts", "checks"}.issubset(checks)

@@ -15,7 +15,6 @@ branches:
         require_code_owner_reviews: false
       required_status_checks:
         strict: true
-        contexts: []
         # Pin the stable gate to GitHub Actions, not a runtime-specific matrix name.
         checks:
           - context: PR quality gate
