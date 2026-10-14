@@ -1,0 +1,26 @@
+name: Published release verification
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Immutable caller revision for every checkout in this stage
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  release-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - name: Require the complete signed release for this source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_RELEASE_KEY_FINGERPRINT: c025b0ffd4e676db5710697b756ed9b4a46025966b26faface444f3318c8513f
+        run: bash scripts/release/verify.sh

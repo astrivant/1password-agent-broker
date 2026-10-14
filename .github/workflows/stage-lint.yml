@@ -1,0 +1,42 @@
+name: Lint and documentation
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Immutable caller revision for every checkout in this stage
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+      - uses: ./.github/actions/python
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+          cache-dependency-path: scripts/documentation/package-lock.json
+      - run: npm ci --prefix scripts/documentation --ignore-scripts --no-fund
+      - run: npm --prefix scripts/documentation test
+      - name: Install pinned actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          gh release download "v$ACTIONLINT_VERSION" --repo rhysd/actionlint --dir "$RUNNER_TEMP/actionlint" \
+            --pattern "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" --pattern "actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+          cd "$RUNNER_TEMP/actionlint"
+          sha256sum --check --ignore-missing "actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+          tar -xzf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" actionlint
+          echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+      - run: poetry run pytest -n 2 scripts/ci/tests
+      - run: poetry run pre-commit run --all-files
+      - run: poetry run python scripts/documentation/contents.py --check
+      - run: git diff --exit-code

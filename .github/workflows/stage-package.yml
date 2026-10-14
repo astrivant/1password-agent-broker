@@ -1,0 +1,42 @@
+name: Package and container builds
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Immutable caller revision for every checkout in this stage
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+      - uses: ./.github/actions/python
+      - name: Require tag and metadata agreement
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: test "v$(poetry version --short)" = "$RELEASE_TAG"
+      - run: poetry build
+      - name: Test installed wheel independently of checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel"
+          "$RUNNER_TEMP/wheel/bin/pip" install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel/bin/agent-broker" demo
+      - name: Build and verify production container
+        run: |
+          docker build --target production -t broker:test .
+          docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges broker:test agent-broker demo
+          docker run --rm broker:test python -c 'from onepassword import Secrets; Secrets.validate_secret_reference("op://synthetic/item/token")'
+          docker build --target development -t broker:development .
+          docker run --rm broker:development pytest -n 4 -q
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: distributions
+          path: dist/

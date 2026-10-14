@@ -11,7 +11,7 @@
 /pyproject.toml @emmeowzing
 /poetry.lock @emmeowzing
 /Dockerfile @emmeowzing
-/.github/workflows/ci.yml @emmeowzing
+/.github/workflows/ @emmeowzing
 /.github/settings.yml @emmeowzing
 /.github/CODEOWNERS @emmeowzing
 /helm/ @emmeowzing
