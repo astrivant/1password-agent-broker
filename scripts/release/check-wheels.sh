@@ -15,11 +15,13 @@ python3 -m venv "$scratch/sdk"
 (
     cd "$scratch"
     "$scratch/sdk/bin/python" "$root/scripts/release/check_sdk.py"
+    "$scratch/sdk/bin/python" "$root/scripts/release/check_typing.py" agent_broker_sdk
 )
 python3 -m venv "$scratch/server"
 "$scratch/server/bin/python" -m pip install "$root"/dist/*.whl
 (
     cd "$scratch"
+    "$scratch/server/bin/python" "$root/scripts/release/check_typing.py" agent_broker agent_broker_sdk
     "$scratch/server/bin/agent-broker" demo
 )
 
@@ -30,5 +32,7 @@ python3 -m pip wheel --no-deps --wheel-dir "$scratch/rebuilt" "$root"/dist/*.tar
 (
     cd "$scratch"
     "$scratch/sdk/bin/python" "$root/scripts/release/check_sdk.py"
+    "$scratch/sdk/bin/python" "$root/scripts/release/check_typing.py" agent_broker_sdk
+    "$scratch/server/bin/python" "$root/scripts/release/check_typing.py" agent_broker agent_broker_sdk
     "$scratch/server/bin/agent-broker" demo
 )
