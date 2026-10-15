@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from _typeshed.wsgi import StartResponse, WSGIEnvironment
     from flask import Flask
 
+    from agent_broker.crypto.service import CryptoService
     from agent_broker.engine import Broker
 
 
@@ -120,6 +121,7 @@ class BrokerServer:
         client_ca: Path,
         metrics_address: tuple[str, int] | None = None,
         capacity: int = 8,
+        crypto: CryptoService | None = None,
     ) -> None:
         """
         Bind verified mTLS capability routes and optional private operational routes.
@@ -132,9 +134,10 @@ class BrokerServer:
             client_ca (Path): Workload certificate authority.
             metrics_address (tuple[str, int] | None): Internal monitoring listener, when enabled.
             capacity (int): Maximum concurrent capability handlers.
+            crypto (CryptoService | None): Explicit service-only key operations, disabled by default.
         """
         self.broker = broker
-        self.app = APIBuilder(capacity=capacity).with_broker(broker).build()
+        self.app = APIBuilder(capacity=capacity, crypto=crypto).with_broker(broker).build()
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.minimum_version = ssl.TLSVersion.TLSv1_3
         context.load_cert_chain(cert, key)

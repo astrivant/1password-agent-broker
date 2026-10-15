@@ -19,6 +19,7 @@ RUN /opt/broker/bin/python -c 'from onepassword import Secrets; Secrets.validate
 
 FROM build AS development
 COPY scripts/ scripts/
+COPY tests/ tests/
 RUN POETRY_VIRTUALENVS_CREATE=false VIRTUAL_ENV=/opt/broker poetry install --with dev --no-interaction \
     && chown -R broker:broker /build /opt/broker
 ENV PATH="/opt/broker/bin:$PATH"

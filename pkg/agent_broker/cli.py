@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 
 from agent_broker import contracts, demo, mcp_server
 from agent_broker.approval import approve
+from agent_broker.crypto.contracts import load_policy as load_crypto_policy
+from agent_broker.crypto.service import CryptoService
 from agent_broker.engine import Broker
 from agent_broker.exceptions import AuditFailure, ProviderFailure, Rejected
 from agent_broker.ledger import Ledger
@@ -43,6 +45,7 @@ def parser() -> argparse.ArgumentParser:
     serve.add_argument("--metrics-host", default="127.0.0.1")
     serve.add_argument("--metrics-port", type=int, default=9090)
     serve.add_argument("--capacity", type=int, default=8)
+    serve.add_argument("--crypto-policy", type=Path, help="Opt-in operator-owned service key policy; never exposed to MCP")
     serve.add_argument("--client-ca", type=Path, required=True)
     serve.add_argument("--destination-ca", type=Path)
     grant = commands.add_parser("approve", help="Create one exact operator-approved request")
@@ -111,6 +114,10 @@ def serve(args: argparse.Namespace) -> None:
 
     try:
         broker = Broker(args.policy, args.approvals, ledger, OnePasswordProvider(), HealthExecutor(args.destination_ca))
+        crypto = None
+        if args.crypto_policy is not None:
+            load_crypto_policy(args.crypto_policy)
+            crypto = CryptoService(args.crypto_policy, broker.provider, ledger)
         server = BrokerServer(
             (args.host, args.port),
             broker,
@@ -119,6 +126,7 @@ def serve(args: argparse.Namespace) -> None:
             args.client_ca,
             (args.metrics_host, args.metrics_port),
             args.capacity,
+            crypto,
         )
 
         # Signal handlers only notify the owner; listener shutdown runs outside the serving thread.

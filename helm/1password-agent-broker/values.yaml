@@ -33,6 +33,14 @@ configuration:
     operations: {}
   ## @param configuration.approvals [object] Operator-issued grants keyed by approval ID
   approvals: {}
+crypto:
+  ## @param crypto.enabled Enable the service-only cryptographic endpoint; never adds an MCP tool
+  enabled: false
+  ## @param crypto.policy [object] Closed key references and certificate-scoped grants; no key material
+  policy:
+    version: 1
+    keys: {}
+    grants: {}
 secrets:
   ## @param secrets.tls Existing Secret with tls.crt, tls.key, and ca.crt for broker mTLS
   tls: broker-tls

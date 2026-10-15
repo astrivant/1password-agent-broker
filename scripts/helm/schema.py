@@ -109,6 +109,12 @@ def main() -> None:
     configuration: dict[str, object] = {"type": "object", "additionalProperties": False, "required": ["policy", "approvals"]}
     configuration["properties"] = {"policy": schema("policy"), "approvals": schema("approvals")}
     properties["configuration"] = configuration
+    properties["crypto"] = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["enabled", "policy"],
+        "properties": {"enabled": {"type": "boolean"}, "policy": schema("crypto-policy")},
+    }
     generated["properties"] = properties
     generated["required"] = sorted(properties)
 

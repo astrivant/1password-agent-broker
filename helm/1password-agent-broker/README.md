@@ -59,6 +59,8 @@ Browse the [configuration reference index](references/README.md) for values over
 | ------------------------- | ------------------------------------------------------------------------------ | ------------------- |
 | `configuration.policy`    | Closed broker policy; credential references only, never values                 | `{}`                |
 | `configuration.approvals` | Operator-issued grants keyed by approval ID                                    | `{}`                |
+| `crypto.enabled`          | Enable the service-only cryptographic endpoint; never adds an MCP tool         | `false`             |
+| `crypto.policy`           | Closed key references and certificate-scoped grants; no key material           | `{}`                |
 | `secrets.tls`             | Existing Secret with tls.crt, tls.key, and ca.crt for broker mTLS              | `broker-tls`        |
 | `secrets.provider`        | Existing Secret with OP_SERVICE_ACCOUNT_TOKEN                                  | `broker-provider`   |
 | `secrets.postgresql`      | Existing Secret with PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD and ca.crt | `broker-postgresql` |

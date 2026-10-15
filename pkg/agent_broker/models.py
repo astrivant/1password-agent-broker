@@ -9,7 +9,9 @@ from typing import Literal
 from attrs import frozen
 
 ResultState = Literal["completed", "denied", "failed", "uncertain", "cancelled"]
-ResultCode = Literal["healthy", "unhealthy", "denied", "invalid_request", "provider_failed", "unknown", "cancelled", "audit_failed"]
+ResultCode = Literal[
+    "healthy", "unhealthy", "denied", "invalid_request", "provider_failed", "unknown", "cancelled", "audit_failed", "crypto_completed"
+]
 
 
 @frozen
