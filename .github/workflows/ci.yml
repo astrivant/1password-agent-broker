@@ -112,7 +112,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: test "v$(poetry version --short)" = "$RELEASE_TAG"
+        run: test "v$(poetry -C pkg/python/broker version --short)" = "$RELEASE_TAG"
       - run: bash scripts/release/build.sh
       - name: Test isolated SDK and runtime wheels
         run: bash scripts/release/check-wheels.sh

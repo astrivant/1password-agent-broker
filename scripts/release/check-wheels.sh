@@ -22,3 +22,13 @@ python3 -m venv "$scratch/server"
     cd "$scratch"
     "$scratch/server/bin/agent-broker" demo
 )
+
+# Rebuild from only published source archives so sibling paths cannot hide missing inputs.
+python3 -m pip wheel --no-deps --wheel-dir "$scratch/rebuilt" "$root"/dist/*.tar.gz
+"$scratch/sdk/bin/python" -m pip install --force-reinstall --no-deps "$scratch"/rebuilt/1password_agent_broker_sdk-*.whl
+"$scratch/server/bin/python" -m pip install --force-reinstall --no-deps "$scratch"/rebuilt/*.whl
+(
+    cd "$scratch"
+    "$scratch/sdk/bin/python" "$root/scripts/release/check_sdk.py"
+    "$scratch/server/bin/agent-broker" demo
+)

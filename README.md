@@ -165,6 +165,6 @@ The [Helm chart](helm/1password-agent-broker/README.md) supports two broker repl
 ## Service client SDK
 
 Applications calling a separately deployed broker can install the
-[standalone SDK](packages/sdk/README.md). It provides the typed mTLS key-service
+[standalone SDK](pkg/python/broker_sdk/README.md). It provides the typed mTLS key-service
 client and shared wire contracts without installing the server or 1Password SDK.
 The broker retains key custody and evaluates current authorization for each call.

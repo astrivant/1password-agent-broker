@@ -12,7 +12,7 @@ Provision a trusted TLS CA, a server certificate for the broker hostname, and a 
 openssl x509 -in workload.pem -outform DER | openssl dgst -sha256
 ```
 
-Create `policy.json` below, replacing the fingerprint and synthetic identifiers. Exact 1Password references use IDs or unambiguous alphanumeric names. Paths have three components (`vault/item/field`) or four (`vault/item/section/field`), without query parameters. All keys are closed by the [packaged schemas](../pkg/agent_broker/resources).
+Create `policy.json` below, replacing the fingerprint and synthetic identifiers. Exact 1Password references use IDs or unambiguous alphanumeric names. Paths have three components (`vault/item/field`) or four (`vault/item/section/field`), without query parameters. All keys are closed by the [packaged schemas](../pkg/python/broker/src/agent_broker/resources).
 
 ```json
 {
