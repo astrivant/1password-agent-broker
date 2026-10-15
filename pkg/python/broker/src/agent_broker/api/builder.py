@@ -5,6 +5,7 @@ Construct the process application once after validating its service dependencies
 from __future__ import annotations
 
 import threading
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from attrs import evolve, frozen
@@ -82,7 +83,7 @@ class APIBuilder:
             # Host and forwarded headers cannot promote an observability request into a control request.
             expected = "control" if request.blueprint in {"broker", "crypto"} else "observability"
             if request.environ.get("broker.listener") != expected:
-                return Response('{"error":"not found"}', status=404, content_type="application/json")
+                return Response('{"error":"not found"}', status=HTTPStatus.NOT_FOUND, content_type="application/json")
             return None
 
         @app.after_request
@@ -110,7 +111,7 @@ class APIBuilder:
             Returns:
                 Response: Fixed operational error without diagnostic content.
             """
-            code = error.code or 500 if isinstance(error, HTTPException) else 500
+            code = error.code or HTTPStatus.INTERNAL_SERVER_ERROR if isinstance(error, HTTPException) else HTTPStatus.INTERNAL_SERVER_ERROR
             return Response('{"error":"request unavailable"}', status=code, content_type="application/json")
 
         return app

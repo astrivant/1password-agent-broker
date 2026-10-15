@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import ssl
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from flask import Blueprint, Response, request
@@ -44,7 +45,7 @@ def routes(service: CryptoService, slots: threading.BoundedSemaphore) -> Bluepri
         """
         if telemetry.draining.is_set() or not slots.acquire(blocking=False):
             telemetry.rejected.inc()
-            return Response('{"code":"unavailable"}', status=503, content_type="application/json")
+            return Response('{"code":"unavailable"}', status=HTTPStatus.SERVICE_UNAVAILABLE, content_type="application/json")
         try:
             with telemetry.request():
                 result = CryptoResponse("denied")

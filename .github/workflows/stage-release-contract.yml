@@ -1,0 +1,33 @@
+name: Synthetic release contracts
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Immutable caller revision for every checkout in this stage
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  release-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: distributions
+          path: dist/
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: helm-chart
+          path: dist/
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - name: Verify draft publication and reject corrupted downloads
+        run: bash scripts/ci/checks/release.sh
+      - name: Verify PyPI retry and registry failure contracts
+        run: python3 -m unittest discover -s scripts/release/tests

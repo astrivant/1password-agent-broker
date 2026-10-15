@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import ssl
+from http import HTTPStatus
 from http.client import HTTPException, HTTPSConnection
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
@@ -85,7 +86,7 @@ class CryptoClient:
 
             # One extra byte distinguishes an oversized body from a complete bounded response.
             payload = response.read(4097)
-            if response.status != 200 or len(payload) > 4096:
+            if response.status != HTTPStatus.OK or len(payload) > 4096:
                 raise BrokerError("Invalid broker response")
             result = contracts.parse_response(json.loads(payload))
             if result.code != "ok":

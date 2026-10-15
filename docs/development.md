@@ -22,6 +22,8 @@ Use `$...$` or dollar/backtick pairs for inline math, and `$$` blocks or `math` 
 
 Math validation deliberately uses KaTeX's strict portable subset. GitHub uses MathJax and GitLab uses KaTeX; this check does not claim identical engine support or validate mathematical truth. The lockfile overrides nested KaTeX copies to the patched direct version to address GHSA-238p-pmpm-9mq7. Mermaid syntax validation does not verify diagram layout or the host's installed Mermaid version. Preview changed equations and diagrams on the intended host before merging, and use an exported visual for unsupported presentation features.
 
+Use `from http import HTTPStatus` and named members for Python HTTP response codes, comparisons, defaults and test expectations. Preserve status-class ranges and integer wire values when replacing literals.
+
 Python uses typed Google-style multiline docstrings, with `Returns: None` for ordinary void functions. Constructors document inputs and side effects without a return section, as required by pydoclint. The generic conversion helper retains `TypeVar` syntax because current pydocstyle cannot parse PEP 695 function type parameters; this does not alter its typed contract.
 
 Add intent comments before significant blocks, loops, and branches, with a blank line separating logical blocks where the language permits. Explain the decision or invariant a maintainer must preserve: trust boundaries, transaction ordering, replay and cancellation semantics, resource ownership, bounded waits, and publication gates. Keep docstrings focused on the callable's contract and comments on the local implementation reason. Avoid narrating obvious syntax or repeating the docstring.
@@ -47,7 +49,7 @@ Run `poetry run pre-commit run codeowners --all-files` for the focused check. CI
 | `pkg/python/broker/src/agent_broker/testing/` | Generated certificates and synthetic local service shared by demo/tests. |
 | `tests/broker/` | Runtime security and integration regressions; SDK and crypto tests are sibling categories. |
 | `scripts/` | Documentation, CI redaction, and release operations. |
-| `.github/` | One shallow CI workflow, cached environment action, and repository metadata. |
+| `.github/` | CI orchestration, reusable stages, cached environment action, and repository metadata. |
 
 ## Containers
 
@@ -63,6 +65,46 @@ These profiles run synthetic work only and require no credentials. The developme
 The 1Password provider SDK is pinned in `pkg/python/broker/pyproject.toml` and the root `poetry.lock`. Its published wheels stop at CPython 3.13; Python 3.14 installs its source distribution with bundled native libraries. The package omits `py.typed`, so mypy follows its inline annotations through a scoped `follow_untyped_imports` override. Tests exercise the actual authentication and resolution adapters against a synthetic native boundary, plus real offline native reference validation. They never authenticate to a live account.
 
 ## CI and pinned tools
+
+### CI stage contracts
+
+[ci.yml](../.github/workflows/ci.yml) owns triggers, event authorization, cross-stage
+dependencies, and the stable `PR quality gate`. Its job calls use GitHub's
+[reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows),
+which compose separate workflow files into the same run. Each stage accepts the
+caller's immutable `github.sha` as `source_sha`; every checkout uses that revision.
+Local workflow references also resolve at the caller's commit. No preliminary job
+delays source checks just to resolve this already available revision.
+
+| Stage file | Responsibility and input/output contract |
+| --- | --- |
+| [stage-lint.yml](../.github/workflows/stage-lint.yml) | Source, typing, documentation, hooks, and CI contract tests. |
+| [stage-tests.yml](../.github/workflows/stage-tests.yml) | Supported Python matrix with PostgreSQL, runtime/SDK coverage and demo; emits `coverage-<python>` artifacts. |
+| [stage-package.yml](../.github/workflows/stage-package.yml) | Runtime and SDK wheels/source archives, isolated installations, and both container targets; emits `distributions`. |
+| [stage-charts.yml](../.github/workflows/stage-charts.yml) | Schema, rendering, and chart checks; emits `helm-chart`. |
+| [stage-security.yml](../.github/workflows/stage-security.yml) | Trivy scan and redacted `redacted-security-results` artifact, including failed scans. |
+| [stage-release-contract.yml](../.github/workflows/stage-release-contract.yml) | Consumes the current run's distribution/chart artifacts for synthetic signing and publication checks. |
+| [stage-coverage.yml](../.github/workflows/stage-coverage.yml) | Consumes measured test coverage after the matrix succeeds; serializes writes to the coverage branch on main. |
+| [stage-release.yml](../.github/workflows/stage-release.yml) | Consumes accepted distribution/chart bytes and named Cosign secrets for an authorized tag publication. |
+| [stage-release-verification.yml](../.github/workflows/stage-release-verification.yml) | Independently downloads and verifies the tag's signed release, even after failed or skipped publication. |
+| [stage-pypi.yml](../.github/workflows/stage-pypi.yml) | Accepts `release_tag` and the named `PYPI_API_TOKEN`; authenticates published bytes, uploads them, then checks registry files and the installed demo. |
+
+Lint, tests, packaging, charts, and security start independently. Release-contract
+checks wait only for packaging and charts; coverage waits only for tests. The
+merge gate retains its exact check name and six required producers. A stage file
+is a responsibility boundary, not a sequential phase.
+
+Only coverage and GitHub release callers grant `contents: write`. Signing and PyPI
+credentials are forwarded by name to their publishing stage. The PyPI job retains
+its `pypi` environment and per-version publication lock; coverage retains its own
+writer lock. The entry workflow remains the only event-triggered workflow.
+
+The manual `pypi_release` retry still runs from main, requires all validation, and
+authenticates the existing signed release without creating another GitHub release.
+Its condition explicitly permits the skipped tag verifier on that path. Registry
+verification still fails if its publisher fails. Source contract tests and
+Actionlint check these boundaries locally; actual hosted event paths require their
+own run evidence.
 
 ### Pull request merge policy
 

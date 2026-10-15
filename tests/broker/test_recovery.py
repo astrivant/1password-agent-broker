@@ -9,6 +9,7 @@ import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 import pytest
@@ -302,7 +303,7 @@ def test_terminal_audit_failure_preserves_result(fixture: Scenario, monkeypatch:
     with monkeypatch.context() as patch:
         patch.setattr(fixture.broker.ledger, "event", unavailable)
         assert fixture.clients["alpha"].call(payload) == Result("uncertain", "audit_failed")
-    assert fixture.clients["alpha"].call(payload, inspect=True) == Result("completed", "healthy", 204, replayed=True)
+    assert fixture.clients["alpha"].call(payload, inspect=True) == Result("completed", "healthy", HTTPStatus.NO_CONTENT, replayed=True)
     assert len(fixture.destination_calls) == 1
 
 

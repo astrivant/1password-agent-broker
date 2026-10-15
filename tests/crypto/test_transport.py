@@ -9,6 +9,7 @@ import hashlib
 import ssl
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -82,7 +83,9 @@ def test_service_route_is_opt_in_and_control_only(fixture: Fixture, tmp_path: Pa
         app = APIBuilder(broker=application.broker, crypto=fixture.service).build()
         client = app.test_client()
         payload = contracts.data(fixture.request)
-        assert client.post("/crypto", json=payload, environ_overrides={"broker.listener": "observability"}).status_code == 404
+        assert (
+            client.post("/crypto", json=payload, environ_overrides={"broker.listener": "observability"}).status_code == HTTPStatus.NOT_FOUND
+        )
         result = client.post(
             "/crypto", json=payload, headers={"SSL-Client-Verify": "SUCCESS"}, environ_overrides={"broker.listener": "control"}
         )
@@ -130,8 +133,13 @@ def test_crypto_shares_execution_admission(fixture: Fixture, tmp_path: Path, mon
             pending = pool.submit(client.post, "/crypto", json=contracts.data(fixture.request), environ_overrides=scope)
             try:
                 assert entered.wait(10)
-                assert client.post("/execute", json=contracts.data(application.request()), environ_overrides=scope).status_code == 503
-                assert client.post("/status", json=contracts.data(application.request()), environ_overrides=scope).status_code == 200
+                assert (
+                    client.post("/execute", json=contracts.data(application.request()), environ_overrides=scope).status_code
+                    == HTTPStatus.SERVICE_UNAVAILABLE
+                )
+                assert (
+                    client.post("/status", json=contracts.data(application.request()), environ_overrides=scope).status_code == HTTPStatus.OK
+                )
             finally:
                 release.set()
-            assert pending.result(timeout=10).status_code == 200
+            assert pending.result(timeout=10).status_code == HTTPStatus.OK
