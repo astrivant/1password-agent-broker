@@ -51,7 +51,7 @@ Both container targets built on Linux ARM64 with Python 3.14.8 and locked depend
 
 ## Hosted checks
 
-The single [CI workflow](https://github.com/astrivant/1password-agent-broker/actions/workflows/ci.yml) runs lint, Python tests, packaging/container smoke checks, and Trivy in parallel. Coverage reports and redacted security findings are attached to the run. Release publication waits for those checks and runs only for version tags in the upstream repository.
+The single [CI entry workflow](https://github.com/astrivant/1password-agent-broker/actions/workflows/ci.yml) calls [reusable stages](development.md#ci-stage-contracts) for lint, Python tests, packaging/container smoke checks, charts, and Trivy in parallel. Coverage reports and redacted security findings are attached to the run. Release publication waits for every required validation stage and runs only for version tags in the upstream repository.
 
 A green synthetic pipeline does not establish production readiness. Live 1Password authentication, organization-specific vault permissions, certificate issuance, ingress deployment, operational retention, and host isolation remain operator integration work.
 
