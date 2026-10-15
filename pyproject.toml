@@ -1,13 +1,15 @@
 [project]
 name = "1password-agent-broker"
-version = "0.3.0"
+version = "0.4.0"
 description = "Let agents use approved 1Password-backed capabilities without receiving secret values"
 readme = "README.md"
 requires-python = ">=3.12,!=3.14.1,<4"
 license = "Apache-2.0"
 authors = [{ name = "Astrivant" }]
 dependencies = [
+    "1password-agent-broker-sdk==0.4.0",
     "attrs==26.1.0",
+    "pycasbin==2.8.0",
     "cattrs==26.2.1",
     "jsonschema==4.26.0",
     "cryptography==50.0.2",
@@ -40,7 +42,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 packages = [{ include = "agent_broker", from = "pkg" }]
+exclude = ["pkg/agent_broker/tests"]
 include = [{ path = "pkg/agent_broker/resources", format = ["sdist", "wheel"] }]
+
+[tool.poetry.dependencies]
+1password-agent-broker-sdk = { path = "packages/sdk", develop = false }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "0.17.0"
@@ -78,10 +84,10 @@ required-imports = ["from __future__ import annotations"]
 python_version = "3.12"
 strict = true
 disallow_any_explicit = true
-files = ["pkg", "scripts", "tests"]
+files = ["pkg", "packages/sdk/pkg", "scripts", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["onepassword.*"]
+module = ["onepassword.*", "casbin.*"]
 follow_untyped_imports = true
 
 [tool.pydocstyle]
@@ -107,7 +113,7 @@ testpaths = ["pkg/agent_broker/tests", "tests"]
 addopts = "-ra -n auto --import-mode=importlib"
 
 [tool.coverage.run]
-source = ["agent_broker"]
+source = ["agent_broker", "agent_broker_sdk"]
 
 [tool.sqlfluff.core]
 dialect = "sqlite"

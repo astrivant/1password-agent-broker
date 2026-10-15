@@ -213,3 +213,31 @@ def test_authority_change_preserves_authorized_history(fixture: Fixture) -> None
     assert fixture.service.handle("a" * 64, contracts.data(old)) == Response("denied")
     current = evolve(old, task=grant.task, authority=grant.authority, policy=grant.policy)
     assert fixture.service.handle("a" * 64, contracts.data(current)).payload == fixture.request.payload
+
+
+@pytest.mark.parametrize("change", ["key", "action", "revoked", "record", "all-records"])
+def test_maintained_evaluator_preserves_operator_grant_scope(fixture: Fixture, change: str) -> None:
+    """
+    Check policy integration semantics independently of the evaluator's internal implementation.
+
+    Args:
+        fixture (Fixture): Synthetic custody and initially permitted request.
+        change (str): Operator policy change applied before the request.
+
+    Returns:
+        None: Only explicit all-records permission broadens record scope; other removals deny before key access.
+    """
+    grant = fixture.policy.grants[fixture.request.grant]
+    if change == "key":
+        grant = evolve(grant, keys=(fixture.signing,))
+    elif change == "action":
+        grant = evolve(grant, actions=("public",))
+    elif change == "revoked":
+        grant = evolve(grant, revoked=True)
+    else:
+        grant = evolve(grant, records=(str(uuid4()),), all_records=change == "all-records")
+    write_private(fixture.service.policy, contracts.data(evolve(fixture.policy, grants={fixture.request.grant: grant})))
+    response = fixture.service.handle("a" * 64, contracts.data(fixture.request))
+    assert response.code == ("ok" if change == "all-records" else "denied")
+    if change != "all-records":
+        assert not fixture.provider.calls

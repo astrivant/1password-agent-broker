@@ -168,3 +168,19 @@ The chart job runs independently of Python tests and source builds, validates Ku
 The [configuration reference index](../helm/1password-agent-broker/references/README.md) lists supported overlays. Keep each in `references/<name>/values.yaml` beside its README, using Bitnami `@section` and `@param` annotations for every override. `scripts/helm/generate.sh`, invoked by the existing Bitnami pre-commit hook, generates all reference parameter tables along with the chart's default table. The standard README hook maintains their contents. Add each configuration's link and purpose to the index; retain the chart README's reference section before generated parameters. Chart CI lints and renders every reference against the chart and Kubernetes schemas. Run `pre-commit run --all-files` and `bash scripts/helm/check.sh` after changing these sources, and review the generated output before staging.
 
 PostgreSQL integration tests require an explicitly selected disposable database. Set `BROKER_TEST_POSTGRES=1` and native `PGHOST`, `PGPORT`, `PGDATABASE`, and `PGUSER` variables. Local synthetic containers may use `PGSSLMODE=disable`; production charts enforce certificate verification. CI provisions an isolated PostgreSQL 18.6 service for each Python-version test job. The tests create broker tables, use unique request IDs, and exercise cross-replica claims, cancellation, and recovery. Never point them at a production database.
+
+## Runtime and client packages
+
+`bash scripts/release/build.sh` builds the broker and its separately installable
+client SDK. Their manifest versions must agree before a tag is accepted. The
+root lockfile resolves the SDK from `packages/sdk` for development; published
+metadata requires its exact registry version. `bash scripts/release/check-wheels.sh`
+installs the SDK alone, checks that server/provider modules are absent, then
+installs both wheels and runs the synthetic runtime demo outside the checkout.
+
+Signed releases include both wheels and source distributions, the chart, source
+provenance and a signed package inventory. The PyPI run authenticates those
+archives, checks each project's existing file hashes, uploads missing files with
+the existing organization credential, and independently verifies registry bytes.
+It also supports retrying earlier runtime-only releases. Consumers should adopt
+the SDK only after its registry publication has been verified.

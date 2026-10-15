@@ -7,8 +7,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import time
-from typing import TYPE_CHECKING
+from importlib.resources import as_file, files
+from typing import TYPE_CHECKING, Protocol
 
+from casbin import Enforcer
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, padding, rsa
@@ -27,6 +29,24 @@ if TYPE_CHECKING:
     from agent_broker.providers import Provider
 
 __all__ = ["CryptoService", "signature_input"]
+
+
+class Evaluator(Protocol):
+    """
+    Type the maintained evaluator's public variadic boundary without spreading untyped calls.
+    """
+
+    def enforce(self, *rvals: object) -> bool:
+        """
+        Evaluate request attributes through the packaged authorization model.
+
+        Args:
+            *rvals (object): Attributes matching the model's ordered request definition.
+
+        Returns:
+            bool: Explicit authorization decision from the maintained evaluator.
+        """
+        ...
 
 
 def signature_input(request: Request, digest: bytes) -> bytes:
@@ -79,18 +99,14 @@ class CryptoService:
         """
         policy, revision = load_policy(self.policy)
         grant = policy.grants.get(request.grant)
-        binding = request.binding
-        if (
-            grant is None
-            or grant.revoked
-            or grant.expires_at <= self.clock()
-            or grant.certificate_sha256 != fingerprint
-            or (grant.tenant, grant.identity, grant.task, grant.authority, grant.policy)
-            != (binding.tenant, binding.identity, request.task, request.authority, request.policy)
-            or request.action not in grant.actions
-            or request.key not in grant.keys
-            or (not grant.all_records and binding.record not in grant.records)
-        ):
+        if grant is None:
+            raise Rejected("Crypto scope denied")
+
+        # Casbin evaluates the fixed ABAC model against this newly loaded operator grant.
+        # No policy cache can outlive a revocation, and SDK fields never define policy code.
+        with as_file(files("agent_broker").joinpath("resources/crypto-authorization.conf")) as model:
+            enforcer: Evaluator = Enforcer(str(model), enable_log=False)
+        if enforcer.enforce(fingerprint, grant, request, self.clock()) is not True:
             raise Rejected("Crypto scope denied")
         return policy, revision
 
