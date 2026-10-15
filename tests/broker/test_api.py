@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 from urllib.request import urlopen
 
@@ -66,13 +67,13 @@ def test_builder_and_metrics(fixture: Scenario, monkeypatch: pytest.MonkeyPatch)
         assert b"broker_requests_in_flight 1.0" in metrics.data
         assert b"broker_queue_size" in metrics.data
     response = client.get("/readyz", environ_overrides=scope)
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     assert body(response)["status"] == "unavailable"
     assert body(response)["message"] == "Operator configuration or durable storage is unavailable"
     fixture.broker.ledger.telemetry.state("draining")
     monkeypatch.setattr(fixture.broker.ledger, "ready", lambda: True)
-    assert client.get("/readyz", environ_overrides=scope).status_code == 503
-    assert client.get("/livez", environ_overrides=scope).status_code == 200
+    assert client.get("/readyz", environ_overrides=scope).status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    assert client.get("/livez", environ_overrides=scope).status_code == HTTPStatus.OK
     assert fixture.provider.calls == []
     assert response.headers["Cache-Control"] == "no-store"
 
@@ -91,11 +92,11 @@ def test_listener_boundary(fixture: Scenario) -> None:
     client = app.test_client()
     payload = contracts.data(fixture.request())
     headers = {"X-Forwarded-Port": "8443", "SSL-Client-Verify": "SUCCESS", "Host": "broker:8443"}
-    assert client.post("/execute", json=payload, headers=headers).status_code == 404
-    assert client.post("/execute", json=payload, environ_overrides={"broker.listener": "observability"}).status_code == 404
+    assert client.post("/execute", json=payload, headers=headers).status_code == HTTPStatus.NOT_FOUND
+    assert client.post("/execute", json=payload, environ_overrides={"broker.listener": "observability"}).status_code == HTTPStatus.NOT_FOUND
     result = client.post("/execute", json=payload, headers=headers, environ_overrides={"broker.listener": "control"})
     assert body(result)["state"] == "denied"
-    assert client.get("/metrics", environ_overrides={"broker.listener": "control"}).status_code == 404
+    assert client.get("/metrics", environ_overrides={"broker.listener": "control"}).status_code == HTTPStatus.NOT_FOUND
     assert fixture.provider.calls == []
 
 
@@ -146,11 +147,11 @@ def test_saturation_retains_recovery(fixture: Scenario) -> None:
         try:
             assert entered.wait(10)
             client = app.test_client()
-            assert client.post("/execute", json=payload, environ_overrides=scope).status_code == 503
+            assert client.post("/execute", json=payload, environ_overrides=scope).status_code == HTTPStatus.SERVICE_UNAVAILABLE
             assert body(client.post("/status", json=payload, environ_overrides=scope))["state"] == "uncertain"
             assert body(client.post("/cancel", json=payload, environ_overrides=scope))["state"] == "uncertain"
             fixture.broker.ledger.telemetry.state("draining")
-            assert client.post("/execute", json=payload, environ_overrides=scope).status_code == 503
+            assert client.post("/execute", json=payload, environ_overrides=scope).status_code == HTTPStatus.SERVICE_UNAVAILABLE
         finally:
             release.set()
         assert body(pending.result(timeout=10))["state"] == "uncertain"
@@ -170,7 +171,7 @@ def test_monitoring_socket_lifecycle(fixture: Scenario) -> None:
     root = fixture.root
     server = BrokerServer(("127.0.0.1", 0), fixture.broker, root / "server.pem", root / "server.key", root / "ca.pem", ("127.0.0.1", 0))
     with running(server), urlopen(f"http://127.0.0.1:{server.metrics_port}/readyz", timeout=5) as response:
-        assert response.status == 200
+        assert response.status == HTTPStatus.OK
         assert b"Broker accepts approved operations" in response.read()
     server.shutdown()
     assert fixture.broker.ledger.telemetry.snapshot()["status"] == "draining"

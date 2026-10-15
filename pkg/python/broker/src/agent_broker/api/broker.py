@@ -8,6 +8,7 @@ import hashlib
 import json
 import ssl
 import threading
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from flask import Blueprint, Response, request
@@ -48,7 +49,7 @@ def routes(broker: Broker, slots: threading.BoundedSemaphore) -> Blueprint:
         admission = slots if request.path == "/execute" else recovery
         if telemetry.draining.is_set() or not admission.acquire(blocking=False):
             telemetry.rejected.inc()
-            return Response('{"error":"broker unavailable"}', status=503, content_type="application/json")
+            return Response('{"error":"broker unavailable"}', status=HTTPStatus.SERVICE_UNAVAILABLE, content_type="application/json")
         try:
             with telemetry.request():
                 result = Result("denied", "invalid_request")

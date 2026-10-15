@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import ssl
 import threading
+from http import HTTPStatus
 from http.client import HTTPException, HTTPSConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING
@@ -170,7 +171,7 @@ class Client:
 
             # Read one byte beyond the response budget so oversized bodies fail instead of being silently truncated.
             payload = response.read(4097)
-            if response.status != 200 or len(payload) > 4096:
+            if response.status != HTTPStatus.OK or len(payload) > 4096:
                 raise Rejected("Invalid broker response")
             return structure(json.loads(payload), Result, "result")
         except (OSError, HTTPException, ValueError, Rejected):
