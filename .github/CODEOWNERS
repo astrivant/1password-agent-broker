@@ -1,5 +1,5 @@
 # Review routing for the maintained broker and its operating contracts.
-/pkg/agent_broker/ @emmeowzing
+/pkg/python/broker/ @emmeowzing
 /docs/architecture.md @emmeowzing
 /docs/development.md @emmeowzing
 /docs/operations.md @emmeowzing
@@ -38,3 +38,11 @@
 /scripts/qa/github.sh @emmeowzing
 /.github/dependabot.yml @emmeowzing
 /.gitignore @emmeowzing
+/tests/ @emmeowzing
+/docs/key-service.md @emmeowzing
+/pkg/python/broker_sdk/ @emmeowzing
+/scripts/release/build.sh @emmeowzing
+/scripts/release/check-wheels.sh @emmeowzing
+/scripts/release/check_sdk.py @emmeowzing
+/.github/actions/python/ @emmeowzing
+/tests/broker/ @emmeowzing

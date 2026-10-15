@@ -12,13 +12,15 @@ WORKDIR /build
 RUN pip install poetry==2.5.1
 COPY pyproject.toml poetry.lock README.md LICENSE ./
 COPY pkg/ pkg/
-RUN poetry build && python -m venv /opt/broker \
-    && POETRY_VIRTUALENVS_CREATE=false VIRTUAL_ENV=/opt/broker poetry install --only main --no-root --no-interaction \
+COPY scripts/release/build.sh scripts/release/build.sh
+RUN bash scripts/release/build.sh && python -m venv /opt/broker \
+    && POETRY_VIRTUALENVS_CREATE=false VIRTUAL_ENV=/opt/broker poetry install --only main --no-root --no-directory --no-interaction \
     && /opt/broker/bin/pip install --no-deps dist/*.whl
 RUN /opt/broker/bin/python -c 'from onepassword import Secrets; Secrets.validate_secret_reference("op://synthetic/item/token")'
 
 FROM build AS development
 COPY scripts/ scripts/
+COPY tests/ tests/
 RUN POETRY_VIRTUALENVS_CREATE=false VIRTUAL_ENV=/opt/broker poetry install --with dev --no-interaction \
     && chown -R broker:broker /build /opt/broker
 ENV PATH="/opt/broker/bin:$PATH"

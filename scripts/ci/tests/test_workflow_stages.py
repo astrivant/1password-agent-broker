@@ -138,3 +138,38 @@ def test_terminal_tag_check_and_manual_pypi_retry_keep_their_failure_gates() -> 
     check = next(step for step in stage["pypi-verification"]["steps"] if step.get("env", {}).get("PUBLISH_RESULT"))
     assert check["env"]["PUBLISH_RESULT"] == "${{ needs.pypi.result }}"
     assert check["run"] == 'test "$PUBLISH_RESULT" = success'
+
+
+@pytest.mark.parametrize("package", ["agent_broker", "agent_broker_sdk"])
+def test_stage_coverage_includes_each_runtime_package(package: str) -> None:
+    """
+    Preserve SDK coverage when merging monolithic workflow updates into reusable stages.
+
+    Args:
+        package (str): Import package whose executed source must contribute to measured coverage.
+
+    Returns:
+        None: The real pytest producer measures both separately published packages.
+    """
+    stage = yaml.load((WORKFLOWS / "stage-tests.yml").read_text(), Loader=yaml.BaseLoader)
+    tests = next(step["run"] for step in stage["jobs"]["tests"]["steps"] if "pytest" in step.get("run", ""))
+    assert f"--cov={package}" in tests.split()
+
+
+def test_package_stage_uses_workspace_build_and_isolation_checks() -> None:
+    """
+    Build both distributions and verify their isolated installations before uploading artifacts.
+
+    Returns:
+        None: The non-published workspace is never treated as the release distribution.
+    """
+    stage = yaml.load((WORKFLOWS / "stage-package.yml").read_text(), Loader=yaml.BaseLoader)
+    steps = stage["jobs"]["package"]["steps"]
+    build = next(index for index, step in enumerate(steps) if step.get("run") == "bash scripts/release/build.sh")
+    verify = next(index for index, step in enumerate(steps) if step.get("run") == "bash scripts/release/check-wheels.sh")
+    upload = next(index for index, step in enumerate(steps) if step.get("with", {}).get("name") == "distributions")
+    assert build < verify < upload
+
+    # Release identity belongs to the runtime manifest; the repository root owns only development tooling.
+    tag_check = next(step for step in steps if step.get("env", {}).get("RELEASE_TAG"))
+    assert tag_check["run"] == 'test "v$(poetry -C pkg/python/broker version --short)" = "$RELEASE_TAG"'

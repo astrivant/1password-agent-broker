@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import time
+from http import HTTPStatus
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import urlopen
@@ -51,12 +52,13 @@ def release_files(payload: object) -> dict[str, str]:
     return files
 
 
-def read_release(version: str) -> dict[str, str]:
+def read_release(version: str, project: str = "1password-agent-broker") -> dict[str, str]:
     """
     Query the exact public version without conflating registry failures with absence.
 
     Args:
         version (str): Validated numeric release version.
+        project (str): Reviewed distribution name.
 
     Returns:
         dict[str, str]: Registry file digests, or an empty mapping for HTTP 404.
@@ -66,10 +68,10 @@ def read_release(version: str) -> dict[str, str]:
         ValueError: The response does not satisfy the file metadata contract.
     """
     try:
-        with urlopen(f"https://pypi.org/pypi/1password-agent-broker/{version}/json", timeout=20) as response:
+        with urlopen(f"https://pypi.org/pypi/{project}/{version}/json", timeout=20) as response:
             payload: object = json.load(response)
     except HTTPError as error:
-        if error.code != 404:
+        if error.code != HTTPStatus.NOT_FOUND:
             raise
         return {}
     return release_files(payload)
@@ -98,7 +100,7 @@ def verify_files(expected: dict[str, str], published: dict[str, str], *, allow_m
         raise PublicationPendingError("PyPI is missing verified release files")
 
 
-def verify_release(expected: dict[str, str], version: str, *, allow_missing: bool) -> None:
+def verify_release(expected: dict[str, str], version: str, *, allow_missing: bool, project: str = "1password-agent-broker") -> None:
     """
     Bound the wait for registry metadata visibility after a successful upload.
 
@@ -106,6 +108,7 @@ def verify_release(expected: dict[str, str], version: str, *, allow_missing: boo
         expected (dict[str, str]): Independently authenticated filenames and hashes.
         version (str): Exact release version to query.
         allow_missing (bool): Whether this is the pre-upload compatibility check.
+        project (str): Reviewed distribution name.
 
     Returns:
         None: Registry files satisfy the selected publication phase.
@@ -120,7 +123,7 @@ def verify_release(expected: dict[str, str], version: str, *, allow_missing: boo
         if delay:
             time.sleep(delay)
         try:
-            verify_files(expected, read_release(version), allow_missing=allow_missing)
+            verify_files(expected, read_release(version, project), allow_missing=allow_missing)
         except PublicationPendingError:
             # A newly uploaded release can outpace public metadata; mismatches must never enter this retry path.
             if attempt == len(delays) - 1:
@@ -144,11 +147,18 @@ def main() -> None:
     args = parser.parse_args()
     if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", args.version) is None:
         parser.error("Expected a numeric major.minor.patch version")
-    names = {f"1password_agent_broker-{args.version}-py3-none-any.whl", f"1password_agent_broker-{args.version}.tar.gz"}
-    if {path.name for path in args.directory.iterdir()} != names:
-        parser.error("Expected exactly the selected release's wheel and source distribution")
-    expected = {name: hashlib.sha256((args.directory / name).read_bytes()).hexdigest() for name in names}
-    verify_release(expected, args.version, allow_missing=args.allow_missing)
+    projects = ["1password-agent-broker"]
+    if any(args.directory.glob("1password_agent_broker_sdk-*.whl")):
+        projects.append("1password-agent-broker-sdk")
+    packages = {
+        project: {f"{project.replace('-', '_')}-{args.version}-py3-none-any.whl", f"{project.replace('-', '_')}-{args.version}.tar.gz"}
+        for project in projects
+    }
+    if {path.name for path in args.directory.iterdir()} != set().union(*packages.values()):
+        parser.error("Expected exactly the authenticated release's Python distributions")
+    for project, names in packages.items():
+        expected = {name: hashlib.sha256((args.directory / name).read_bytes()).hexdigest() for name in names}
+        verify_release(expected, args.version, allow_missing=args.allow_missing, project=project)
     print("PyPI file identity verified" if not args.allow_missing else "PyPI upload preflight passed")
 
 

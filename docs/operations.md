@@ -12,7 +12,7 @@ Provision a trusted TLS CA, a server certificate for the broker hostname, and a 
 openssl x509 -in workload.pem -outform DER | openssl dgst -sha256
 ```
 
-Create `policy.json` below, replacing the fingerprint and synthetic identifiers. Exact 1Password references use IDs or unambiguous alphanumeric names. Paths have three components (`vault/item/field`) or four (`vault/item/section/field`), without query parameters. All keys are closed by the [packaged schemas](../pkg/agent_broker/resources).
+Create `policy.json` below, replacing the fingerprint and synthetic identifiers. Exact 1Password references use IDs or unambiguous alphanumeric names. Paths have three components (`vault/item/field`) or four (`vault/item/section/field`), without query parameters. All keys are closed by the [packaged schemas](../pkg/python/broker/src/agent_broker/resources).
 
 ```json
 {
@@ -188,3 +188,8 @@ The expected first constraint is **provider and destination latency**, followed 
 | RSS/cgroup memory rises with active provider lookups | Concurrent SDK native workers | Lower per-pod capacity or raise the measured memory budget. Watch OOM events. |
 
 For steady work, throughput is approximately active concurrency divided by mean end-to-end latency until another limit intervenes. The chart's CPU/memory requests and limits are starting values, not benchmark results. Linux `process_*` metrics cover the broker parent process; use container/cgroup measurements to include SDK child processes. Measure p50/p95/p99 timings, queue depth, CPU throttling, and peak container memory with representative approved traffic before changing scale. The ledger and provider must sustain the combined load of all replicas and a rolling-update surge.
+
+## Trusted service key operations
+
+For opt-in encryption and signing custody, see [the service-only key API](key-service.md).
+It uses explicit certificate-scoped grants and is separate from agent MCP tools.

@@ -22,6 +22,8 @@ Use `$...$` or dollar/backtick pairs for inline math, and `$$` blocks or `math` 
 
 Math validation deliberately uses KaTeX's strict portable subset. GitHub uses MathJax and GitLab uses KaTeX; this check does not claim identical engine support or validate mathematical truth. The lockfile overrides nested KaTeX copies to the patched direct version to address GHSA-238p-pmpm-9mq7. Mermaid syntax validation does not verify diagram layout or the host's installed Mermaid version. Preview changed equations and diagrams on the intended host before merging, and use an exported visual for unsupported presentation features.
 
+Use `from http import HTTPStatus` and named members for Python HTTP response codes, comparisons, defaults and test expectations. Preserve status-class ranges and integer wire values when replacing literals.
+
 Python uses typed Google-style multiline docstrings, with `Returns: None` for ordinary void functions. Constructors document inputs and side effects without a return section, as required by pydoclint. The generic conversion helper retains `TypeVar` syntax because current pydocstyle cannot parse PEP 695 function type parameters; this does not alter its typed contract.
 
 Add intent comments before significant blocks, loops, and branches, with a blank line separating logical blocks where the language permits. Explain the decision or invariant a maintainer must preserve: trust boundaries, transaction ordering, replay and cancellation semantics, resource ownership, bounded waits, and publication gates. Keep docstrings focused on the callable's contract and comments on the local implementation reason. Avoid narrating obvious syntax or repeating the docstring.
@@ -40,10 +42,12 @@ Run `poetry run pre-commit run codeowners --all-files` for the focused check. CI
 
 | Path | Responsibility |
 | --- | --- |
-| `pkg/agent_broker/` | Typed contracts, authority, durable ledger, credential provider, TLS and MCP adapters. |
-| `pkg/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite/PostgreSQL statements. |
-| `pkg/agent_broker/testing/` | Generated certificates and synthetic local service shared by demo/tests. |
-| `pkg/agent_broker/tests/` | Package-local security and integration regressions. |
+| `pkg/python/broker/` | Runtime distribution manifest, README and license. |
+| `pkg/python/broker_sdk/` | Standalone SDK distribution with its own manifest and `src/agent_broker_sdk/`. |
+| `pkg/python/broker/src/agent_broker/` | Typed contracts, authority, durable ledger, credential provider, TLS and MCP adapters. |
+| `pkg/python/broker/src/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite/PostgreSQL statements. |
+| `pkg/python/broker/src/agent_broker/testing/` | Generated certificates and synthetic local service shared by demo/tests. |
+| `tests/broker/` | Runtime security and integration regressions; SDK and crypto tests are sibling categories. |
 | `scripts/` | Documentation, CI redaction, and release operations. |
 | `.github/` | CI orchestration, reusable stages, cached environment action, and repository metadata. |
 
@@ -58,7 +62,7 @@ docker compose --profile development run --build --rm development
 
 These profiles run synthetic work only and require no credentials. The development target contains the locked development tools. For a real broker, override the command with `agent-broker serve ... --host 0.0.0.0`, mount operator configuration and certificate files read-only, and give only UID 10001 a private writable ledger volume. Inject the service-account token through your runtime secret facility into the broker process alone. Never bake it into a Dockerfile or Compose file.
 
-The SDK is pinned to 0.4.1 in `pyproject.toml` and `poetry.lock`. Its published wheels stop at CPython 3.13; Python 3.14 installs its source distribution with bundled native libraries. The package omits `py.typed`, so mypy follows its inline annotations through a scoped `follow_untyped_imports` override. Tests exercise the actual authentication and resolution adapters against a synthetic native boundary, plus real offline native reference validation. They never authenticate to a live account.
+The 1Password provider SDK is pinned in `pkg/python/broker/pyproject.toml` and the root `poetry.lock`. Its published wheels stop at CPython 3.13; Python 3.14 installs its source distribution with bundled native libraries. The package omits `py.typed`, so mypy follows its inline annotations through a scoped `follow_untyped_imports` override. Tests exercise the actual authentication and resolution adapters against a synthetic native boundary, plus real offline native reference validation. They never authenticate to a live account.
 
 ## CI and pinned tools
 
@@ -75,8 +79,8 @@ delays source checks just to resolve this already available revision.
 | Stage file | Responsibility and input/output contract |
 | --- | --- |
 | [stage-lint.yml](../.github/workflows/stage-lint.yml) | Source, typing, documentation, hooks, and CI contract tests. |
-| [stage-tests.yml](../.github/workflows/stage-tests.yml) | Supported Python matrix with PostgreSQL and demo; emits `coverage-<python>` artifacts. |
-| [stage-package.yml](../.github/workflows/stage-package.yml) | Wheel, source archive, installed demo, and both container targets; emits `distributions`. |
+| [stage-tests.yml](../.github/workflows/stage-tests.yml) | Supported Python matrix with PostgreSQL, runtime/SDK coverage and demo; emits `coverage-<python>` artifacts. |
+| [stage-package.yml](../.github/workflows/stage-package.yml) | Runtime and SDK wheels/source archives, isolated installations, and both container targets; emits `distributions`. |
 | [stage-charts.yml](../.github/workflows/stage-charts.yml) | Schema, rendering, and chart checks; emits `helm-chart`. |
 | [stage-security.yml](../.github/workflows/stage-security.yml) | Trivy scan and redacted `redacted-security-results` artifact, including failed scans. |
 | [stage-release-contract.yml](../.github/workflows/stage-release-contract.yml) | Consumes the current run's distribution/chart artifacts for synthetic signing and publication checks. |
@@ -208,3 +212,21 @@ The chart job runs independently of Python tests and source builds, validates Ku
 The [configuration reference index](../helm/1password-agent-broker/references/README.md) lists supported overlays. Keep each in `references/<name>/values.yaml` beside its README, using Bitnami `@section` and `@param` annotations for every override. `scripts/helm/generate.sh`, invoked by the existing Bitnami pre-commit hook, generates all reference parameter tables along with the chart's default table. The standard README hook maintains their contents. Add each configuration's link and purpose to the index; retain the chart README's reference section before generated parameters. Chart CI lints and renders every reference against the chart and Kubernetes schemas. Run `pre-commit run --all-files` and `bash scripts/helm/check.sh` after changing these sources, and review the generated output before staging.
 
 PostgreSQL integration tests require an explicitly selected disposable database. Set `BROKER_TEST_POSTGRES=1` and native `PGHOST`, `PGPORT`, `PGDATABASE`, and `PGUSER` variables. Local synthetic containers may use `PGSSLMODE=disable`; production charts enforce certificate verification. CI provisions an isolated PostgreSQL 18.6 service for each Python-version test job. The tests create broker tables, use unique request IDs, and exercise cross-replica claims, cancellation, and recovery. Never point them at a production database.
+
+## Runtime and client packages
+
+`bash scripts/release/build.sh` builds the broker and its separately installable
+client SDK. Their manifest versions must agree before a tag is accepted. The
+root is a non-published Poetry workspace. Its lockfile installs both sibling
+distributions from `pkg/python/{broker,broker_sdk}` in editable mode for development; published
+runtime metadata requires the SDK's exact registry version. `bash scripts/release/check-wheels.sh`
+installs the SDK alone, checks that server/provider modules are absent, then
+installs both wheels and runs the synthetic runtime demo outside the checkout.
+It also rebuilds both source archives in isolation and verifies their installations.
+
+Signed releases include both wheels and source distributions, the chart, source
+provenance and a signed package inventory. The PyPI run authenticates those
+archives, checks each project's existing file hashes, uploads missing files with
+the existing organization credential, and independently verifies registry bytes.
+It also supports retrying earlier runtime-only releases. Consumers should adopt
+the SDK only after its registry publication has been verified.

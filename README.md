@@ -26,6 +26,7 @@ Let agents use credentials without handing them the keys. Approve a capability, 
   - [Deployment and security](#deployment-and-security)
   - [Development and releases](#development-and-releases)
 - [Kubernetes and monitoring](#kubernetes-and-monitoring)
+- [Service client SDK](#service-client-sdk)
 
 <!-- /TOC -->
 
@@ -160,3 +161,10 @@ This is an independent Astrivant project using 1Password's official SDK. It is n
 ## Kubernetes and monitoring
 
 The [Helm chart](helm/1password-agent-broker/README.md) supports two broker replicas with a shared PostgreSQL replay ledger, validated ConfigMaps, and private Flask metrics/status endpoints. See [operations](docs/operations.md#kubernetes-and-high-availability) for database durability, image/Secret prerequisites, CRD design, and sizing guidance.
+
+## Service client SDK
+
+Applications calling a separately deployed broker can install the
+[standalone SDK](pkg/python/broker_sdk/README.md). It provides the typed mTLS key-service
+client and shared wire contracts without installing the server or 1Password SDK.
+The broker retains key custody and evaluates current authorization for each call.

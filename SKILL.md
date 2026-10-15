@@ -72,3 +72,22 @@ Every Python package has a PyPI publication run. This project's CI publishes its
 After an authorized release, promptly open upgrade PRs for known downstream consumers and follow their current-revision pipelines through success. Include installation paths and lockfiles in dependency updates; fix ordinary upgrade failures and recheck the new revision. Keep missing access, compatibility blockers and user-owned handoffs explicit. See [consumer follow-through](docs/development.md#downstream-consumers). An explicit request that the user will watch CI takes precedence; PR creation does not imply merge authority.
 
 Before handing work back, review applicable project contracts with actual evidence, exclusions and remaining actions. Preserve confirmed defects as concise regression-backed findings for future work. Report implementation, local validation, remote publication, hosted CI and deployment as separate outcomes.
+
+## Client SDK and service deployment
+
+Keep consuming applications on the independently packaged
+[SDK](pkg/python/broker_sdk/README.md), not the complete broker runtime. Shared wire models
+and schemas live in `pkg/python/broker_sdk/src/agent_broker_sdk`; preserve protocol
+compatibility and the runtime compatibility import. The root Poetry lock owns
+local testing, and both distributions use one release version and source tag.
+Group multi-package source by language under `pkg/<language>/<package>/`. Each
+distribution owns its manifest, README and source tree; the root is a development
+workspace. Preserve installed imports and update every build, test, cache,
+container, ownership and documentation path when moving a package.
+Run `bash scripts/release/build.sh` and `bash scripts/release/check-wheels.sh` to
+verify artifact metadata and independent installations before publication.
+
+Key custody and authorization remain on the deployed server. Its fixed ABAC model
+uses PyCasbin with current operator grants; do not add client-side authority or a
+custom policy evaluator. Exercise denial, revocation and cross-scope tests when
+changing the authorization integration.

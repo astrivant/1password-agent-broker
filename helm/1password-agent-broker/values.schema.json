@@ -101,6 +101,169 @@
         "requests"
       ]
     },
+    "crypto": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "policy"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "policy": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "integer",
+              "const": 1
+            },
+            "keys": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "credential": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "reference": {
+                        "type": "string",
+                        "pattern": "^op://[^/]+/[^/]+/.+$",
+                        "maxLength": 1024
+                      },
+                      "bootstrap_env": {
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+                      }
+                    },
+                    "required": [
+                      "reference"
+                    ]
+                  },
+                  "kind": {
+                    "enum": [
+                      "wrapping",
+                      "signing"
+                    ]
+                  },
+                  "public_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "credential",
+                  "kind",
+                  "public_sha256"
+                ]
+              }
+            },
+            "grants": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "certificate_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "tenant": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "identity": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "task": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "authority": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "policy": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "wrap",
+                        "unwrap",
+                        "sign",
+                        "public"
+                      ]
+                    },
+                    "uniqueItems": true,
+                    "maxItems": 10000
+                  },
+                  "keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "uniqueItems": true,
+                    "maxItems": 10000
+                  },
+                  "expires_at": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "records": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "uniqueItems": true,
+                    "maxItems": 10000
+                  },
+                  "all_records": {
+                    "type": "boolean"
+                  },
+                  "revoked": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "certificate_sha256",
+                  "tenant",
+                  "identity",
+                  "task",
+                  "authority",
+                  "policy",
+                  "actions",
+                  "keys",
+                  "expires_at"
+                ]
+              }
+            }
+          },
+          "required": [
+            "keys",
+            "grants"
+          ]
+        }
+      }
+    },
     "secrets": {
       "type": "object",
       "properties": {
@@ -350,6 +513,7 @@
   "required": [
     "capacity",
     "configuration",
+    "crypto",
     "image",
     "networkPolicy",
     "replicaCount",
