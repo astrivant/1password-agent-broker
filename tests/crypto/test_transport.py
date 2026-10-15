@@ -17,12 +17,12 @@ from agent_broker import contracts
 from agent_broker.api.builder import APIBuilder
 from agent_broker.api.server import BrokerServer
 from agent_broker.approval import write_private
-from agent_broker.crypto.client import CryptoClient
 from agent_broker.crypto.models import Response
 from agent_broker.crypto.service import CryptoService
-from agent_broker.exceptions import ProviderFailure
 from agent_broker.lifecycle import running
 from agent_broker.testing.scenario import scenario
+from agent_broker_sdk.client import CryptoClient
+from agent_broker_sdk.exceptions import BrokerError
 from attrs import evolve
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ def test_real_mtls_sdk(fixture: Fixture, tmp_path: Path) -> None:
             request = evolve(fixture.request, request_id=str(uuid4()), action="unwrap", payload=base64.b64encode(wrapped).decode())
             assert client.invoke(request) == b"d" * 32
             denied = CryptoClient(origin, root / "ca.pem", root / "bravo.pem", root / "bravo.key")
-            with pytest.raises(ProviderFailure, match="^Crypto operation unavailable$"):
+            with pytest.raises(BrokerError, match="^Broker operation unavailable$"):
                 denied.invoke(fixture.request)
 
 

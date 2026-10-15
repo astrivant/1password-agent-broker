@@ -43,9 +43,9 @@ a ConfigMap rollout.
 
 ## SDK contract
 
-Use `agent_broker.crypto.client.CryptoClient` with the broker HTTPS origin, trusted
+Use `agent_broker_sdk.CryptoClient` with the broker HTTPS origin, trusted
 CA and workload certificate/key paths. `invoke(Request(...))` returns bytes or a
-fixed `ProviderFailure`. The request carries a fresh operation UUID, grant UUID,
+fixed `BrokerError`. The request carries a fresh operation UUID, grant UUID,
 action, generation UUID, immutable `Binding`, current task/authority/policy UUIDs
 and canonical base64 payload. Access revisions are checked on every call but are
 excluded from permanent associated data so authorized historical recovery survives
@@ -98,3 +98,18 @@ revocation during key resolution, retry binding and real mTLS client/server
 transport. They use generated keys and the in-memory provider. They do not prove
 live 1Password availability, production revocation latency, PostgreSQL failover,
 key retirement or the security of an operator's deployment.
+
+## Client deployment and authorization
+
+Install the [client SDK](../packages/sdk/README.md) in consuming services and deploy
+the broker runtime independently. The SDK owns wire contracts and mTLS transport;
+it has no provider, database, server or administrative dependencies. Client-side
+validation never confers permission.
+
+The server uses [PyCasbin](https://github.com/apache/casbin-pycasbin) to evaluate
+the packaged ABAC model against freshly read operator grants. It binds the
+transport-verified certificate, tenant, identity, task, authority, policy, action,
+key and record scope, including expiry and revocation. Reauthorization surrounds
+provider work and result release. The model is fixed project code, not a
+caller-supplied expression. Operators still own policy and credential scope;
+using a maintained evaluator does not establish the correctness of those choices.

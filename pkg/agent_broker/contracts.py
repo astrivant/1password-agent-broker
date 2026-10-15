@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, TypeVar
 from urllib.parse import urlsplit
 from uuid import UUID
 
+from agent_broker_sdk.contracts import schema as sdk_schema
 from cattrs import Converter
 from cattrs.errors import BaseValidationError
 from jsonschema import ValidationError, validate
@@ -77,6 +78,8 @@ def schema(name: str) -> dict[str, object]:
     Returns:
         dict[str, object]: Schema for validation and MCP discovery.
     """
+    if name in ("crypto-request", "crypto-response"):
+        return sdk_schema(name)
     result: dict[str, object] = json.loads(files("agent_broker").joinpath(f"resources/{name}.schema.json").read_text())
     return result
 

@@ -4,9 +4,10 @@ Validate service-only key requests and construct their shared authenticated cont
 
 from __future__ import annotations
 
-import base64
 from typing import TYPE_CHECKING
-from uuid import UUID
+
+from agent_broker_sdk import contracts as sdk_contracts
+from agent_broker_sdk.exceptions import BrokerError
 
 from agent_broker import contracts
 from agent_broker.crypto.models import Binding, Policy, Request
@@ -20,65 +21,54 @@ __all__ = ["aad", "decode", "load_policy", "parse_request"]
 
 def aad(binding: Binding) -> bytes:
     """
-    Encode the single versioned associated-data contract shared by broker and service SDK.
+    Preserve the public runtime import for the canonical SDK context contract.
 
     Args:
-        binding (Binding): Validated expected record context, never inferred from ciphertext.
+        binding (Binding): Independently validated record context.
 
     Returns:
-        bytes: Domain-separated canonical JSON context; payload encoding remains independent.
+        bytes: Version-one authenticated context.
     """
-    return b"agent-broker-record-v1\x00" + contracts.encode(contracts.data(binding))
+    return sdk_contracts.aad(binding)
 
 
 def decode(value: str, maximum: int) -> bytes:
     """
-    Reject noncanonical or oversized base64 without reflecting input in diagnostics.
+    Translate SDK validation failures into the server's closed diagnostic boundary.
 
     Args:
-        value (str): Untrusted encoded bytes.
-        maximum (int): Maximum decoded size.
+        value (str): Untrusted base64 bytes.
+        maximum (int): Decoded size budget.
 
     Returns:
-        bytes: Canonically encoded bounded payload.
+        bytes: Bounded canonical payload.
 
     Raises:
-        Rejected: Encoding or size is invalid.
+        Rejected: The payload is invalid.
     """
     try:
-        if len(value) > ((maximum + 2) // 3) * 4:
-            raise Rejected("Invalid crypto payload")
-        result = base64.b64decode(value, validate=True)
-        if len(result) > maximum or base64.b64encode(result).decode() != value:
-            raise Rejected("Invalid crypto payload")
-        return result
-    except (ValueError, UnicodeError):
+        return sdk_contracts.decode(value, maximum)
+    except BrokerError:
         raise Rejected("Invalid crypto payload") from None
 
 
 def parse_request(value: object) -> Request:
     """
-    Enforce closed schema and canonical opaque identifiers before credential access.
+    Use the same request contract as clients before applying server-owned policy.
 
     Args:
         value (object): Untrusted decoded request.
 
     Returns:
-        Request: Exact typed service request.
+        Request: Validated wire model.
 
     Raises:
-        Rejected: A field or identifier is invalid.
+        Rejected: The request is invalid.
     """
-    request = contracts.structure(value, Request, "crypto-request")
-    identifiers = (request.request_id, request.grant, request.key, request.task, request.authority, request.policy) + tuple(
-        getattr(request.binding, name) for name in ("tenant", "identity", "record")
-    )
     try:
-        if any(str(UUID(value)) != value for value in identifiers):
-            raise Rejected("Invalid crypto scope")
-    except ValueError:
-        raise Rejected("Invalid crypto scope") from None
-    return request
+        return sdk_contracts.parse_request(value)
+    except BrokerError:
+        raise Rejected("Invalid crypto request") from None
 
 
 def load_policy(path: Path) -> tuple[Policy, str]:

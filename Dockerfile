@@ -12,6 +12,7 @@ WORKDIR /build
 RUN pip install poetry==2.5.1
 COPY pyproject.toml poetry.lock README.md LICENSE ./
 COPY pkg/ pkg/
+COPY packages/sdk/ packages/sdk/
 RUN poetry build && python -m venv /opt/broker \
     && POETRY_VIRTUALENVS_CREATE=false VIRTUAL_ENV=/opt/broker poetry install --only main --no-root --no-interaction \
     && /opt/broker/bin/pip install --no-deps dist/*.whl

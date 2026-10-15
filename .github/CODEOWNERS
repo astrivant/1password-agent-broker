@@ -40,3 +40,8 @@
 /.gitignore @emmeowzing
 /tests/ @emmeowzing
 /docs/key-service.md @emmeowzing
+/packages/sdk/ @emmeowzing
+/scripts/release/build.sh @emmeowzing
+/scripts/release/check-wheels.sh @emmeowzing
+/scripts/release/check_sdk.py @emmeowzing
+/.github/actions/python/ @emmeowzing
