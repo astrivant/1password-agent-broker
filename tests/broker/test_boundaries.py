@@ -8,6 +8,7 @@ import json
 import sqlite3
 import ssl
 from contextlib import closing
+from http import HTTPStatus
 from http.client import HTTPSConnection
 from typing import TYPE_CHECKING
 
@@ -37,7 +38,7 @@ def test_tls_execution_and_replay(fixture: Scenario, principal: str) -> None:
     request = contracts.data(fixture.request(principal))
     first = fixture.clients[principal].call(request)
     replay = fixture.clients[principal].call(request)
-    assert first == Result("completed", "healthy", 204)
+    assert first == Result("completed", "healthy", HTTPStatus.NO_CONTENT)
     assert replay == evolve(first, replayed=True)
     assert len(fixture.provider.calls) == len(fixture.destination_calls) == 1
     assert not any(secret.encode() in (fixture.root / "audit.db").read_bytes() for secret in fixture.provider.secrets.values())

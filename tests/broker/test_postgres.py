@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -78,7 +79,7 @@ def test_cross_replica_claim_and_recovery(replicas: tuple[Ledger, Ledger]) -> No
     assert first.begin(request_id)
     assert not second.begin(request_id)
     assert second.cancel(request_id, "workload", "binding", "recovery").state == "uncertain"
-    assert first.finish(request_id, Result("completed", "healthy", 204)).state == "uncertain"
+    assert first.finish(request_id, Result("completed", "healthy", HTTPStatus.NO_CONTENT)).state == "uncertain"
     assert second.inspect(request_id, "workload", "recovery").state == "uncertain"
     assert second.inspect(request_id, "other", "recovery").state == "denied"
     assert first.ready() and second.ready()

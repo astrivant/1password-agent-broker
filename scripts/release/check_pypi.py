@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import time
+from http import HTTPStatus
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import urlopen
@@ -70,7 +71,7 @@ def read_release(version: str, project: str = "1password-agent-broker") -> dict[
         with urlopen(f"https://pypi.org/pypi/{project}/{version}/json", timeout=20) as response:
             payload: object = json.load(response)
     except HTTPError as error:
-        if error.code != 404:
+        if error.code != HTTPStatus.NOT_FOUND:
             raise
         return {}
     return release_files(payload)

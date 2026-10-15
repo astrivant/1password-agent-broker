@@ -8,6 +8,7 @@ import io
 import json
 import unittest
 from email.message import Message
+from http import HTTPStatus
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -73,10 +74,10 @@ class PublicationTests(unittest.TestCase):
         Returns:
             None: Only an authoritative missing-version response becomes empty.
         """
-        for code in (404, 403, 429, 500):
+        for code in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN, HTTPStatus.TOO_MANY_REQUESTS, HTTPStatus.INTERNAL_SERVER_ERROR):
             error = HTTPError("https://pypi.org/", code, "synthetic", Message(), None)
             with self.subTest(code=code), patch("scripts.release.check_pypi.urlopen", side_effect=error):
-                if code == 404:
+                if code == HTTPStatus.NOT_FOUND:
                     self.assertEqual(read_release("0.1.0"), {})
                 else:
                     with self.assertRaises(HTTPError):

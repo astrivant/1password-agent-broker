@@ -4,6 +4,7 @@ Register metrics, dependency readiness, and fixed status messages on the shared 
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from attrs import frozen
@@ -86,7 +87,11 @@ class MetricsBuilder:
             # Shutdown can begin during the checks; a late successful probe must not reopen admission.
             available = available and not telemetry.draining.is_set()
             telemetry.state("ready" if available else "unavailable")
-            return Response(contracts.encode(telemetry.snapshot()), status=200 if available else 503, content_type="application/json")
+            return Response(
+                contracts.encode(telemetry.snapshot()),
+                status=HTTPStatus.OK if available else HTTPStatus.SERVICE_UNAVAILABLE,
+                content_type="application/json",
+            )
 
         application.register_blueprint(blueprint)
         return application

@@ -7,6 +7,7 @@ from __future__ import annotations
 import secrets
 import ssl
 from contextlib import contextmanager
+from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from typing import TYPE_CHECKING
 
@@ -136,7 +137,7 @@ def scenario(root: Path) -> Iterator[Scenario]:
             """
             destination_calls.append(self.path)
             expected = tokens.get(f"op://synthetic/{self.path.strip('/')}/token", "invalid")
-            self.send_response(204 if self.headers.get("Authorization") == f"Bearer {expected}" else 403)
+            self.send_response(HTTPStatus.NO_CONTENT if self.headers.get("Authorization") == f"Bearer {expected}" else HTTPStatus.FORBIDDEN)
             self.send_header("Content-Length", "0")
             self.end_headers()
 

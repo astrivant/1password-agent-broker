@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import secrets
 import time
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from attrs import evolve
@@ -216,7 +217,9 @@ class Broker:
                             attempted = True
                             with self.ledger.telemetry.phase("destination"):
                                 status = self.executor.execute(operation, secret)
-                            result = Result("completed", "healthy" if 200 <= status < 300 else "unhealthy", status)
+                            result = Result(
+                                "completed", "healthy" if HTTPStatus.OK <= status < HTTPStatus.MULTIPLE_CHOICES else "unhealthy", status
+                            )
                     del secret
                 except ProviderFailure:
                     result = Result("failed", "provider_failed")
