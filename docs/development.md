@@ -40,10 +40,12 @@ Run `poetry run pre-commit run codeowners --all-files` for the focused check. CI
 
 | Path | Responsibility |
 | --- | --- |
-| `pkg/agent_broker/` | Typed contracts, authority, durable ledger, credential provider, TLS and MCP adapters. |
-| `pkg/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite/PostgreSQL statements. |
-| `pkg/agent_broker/testing/` | Generated certificates and synthetic local service shared by demo/tests. |
-| `pkg/agent_broker/tests/` | Package-local security and integration regressions. |
+| `pkg/python/broker/` | Runtime distribution manifest, README and license. |
+| `pkg/python/broker_sdk/` | Standalone SDK distribution with its own manifest and `src/agent_broker_sdk/`. |
+| `pkg/python/broker/src/agent_broker/` | Typed contracts, authority, durable ledger, credential provider, TLS and MCP adapters. |
+| `pkg/python/broker/src/agent_broker/resources/` | Closed JSON schemas and parameterized SQLite/PostgreSQL statements. |
+| `pkg/python/broker/src/agent_broker/testing/` | Generated certificates and synthetic local service shared by demo/tests. |
+| `tests/broker/` | Runtime security and integration regressions; SDK and crypto tests are sibling categories. |
 | `scripts/` | Documentation, CI redaction, and release operations. |
 | `.github/` | One shallow CI workflow, cached environment action, and repository metadata. |
 
@@ -58,7 +60,7 @@ docker compose --profile development run --build --rm development
 
 These profiles run synthetic work only and require no credentials. The development target contains the locked development tools. For a real broker, override the command with `agent-broker serve ... --host 0.0.0.0`, mount operator configuration and certificate files read-only, and give only UID 10001 a private writable ledger volume. Inject the service-account token through your runtime secret facility into the broker process alone. Never bake it into a Dockerfile or Compose file.
 
-The SDK is pinned to 0.4.1 in `pyproject.toml` and `poetry.lock`. Its published wheels stop at CPython 3.13; Python 3.14 installs its source distribution with bundled native libraries. The package omits `py.typed`, so mypy follows its inline annotations through a scoped `follow_untyped_imports` override. Tests exercise the actual authentication and resolution adapters against a synthetic native boundary, plus real offline native reference validation. They never authenticate to a live account.
+The 1Password provider SDK is pinned in `pkg/python/broker/pyproject.toml` and the root `poetry.lock`. Its published wheels stop at CPython 3.13; Python 3.14 installs its source distribution with bundled native libraries. The package omits `py.typed`, so mypy follows its inline annotations through a scoped `follow_untyped_imports` override. Tests exercise the actual authentication and resolution adapters against a synthetic native boundary, plus real offline native reference validation. They never authenticate to a live account.
 
 ## CI and pinned tools
 
@@ -173,10 +175,12 @@ PostgreSQL integration tests require an explicitly selected disposable database.
 
 `bash scripts/release/build.sh` builds the broker and its separately installable
 client SDK. Their manifest versions must agree before a tag is accepted. The
-root lockfile resolves the SDK from `packages/sdk` for development; published
-metadata requires its exact registry version. `bash scripts/release/check-wheels.sh`
+root is a non-published Poetry workspace. Its lockfile installs both sibling
+distributions from `pkg/python/{broker,broker_sdk}` in editable mode for development; published
+runtime metadata requires the SDK's exact registry version. `bash scripts/release/check-wheels.sh`
 installs the SDK alone, checks that server/provider modules are absent, then
 installs both wheels and runs the synthetic runtime demo outside the checkout.
+It also rebuilds both source archives in isolation and verifies their installations.
 
 Signed releases include both wheels and source distributions, the chart, source
 provenance and a signed package inventory. The PyPI run authenticates those

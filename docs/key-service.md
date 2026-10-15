@@ -12,7 +12,7 @@ cryptographic grant unless an operator explicitly enrolls it.
 Pass `agent-broker serve --crypto-policy /operator/crypto.json` alongside the
 existing server options. The Helm equivalents are `crypto.enabled` and
 `crypto.policy`. The default is disabled. The packaged
-[closed policy schema](../pkg/agent_broker/resources/crypto-policy.schema.json)
+[closed policy schema](../pkg/python/broker/src/agent_broker/resources/crypto-policy.schema.json)
 is authoritative; unknown fields are rejected.
 
 `keys` maps generation UUIDs to `credential.reference`, `kind` and
@@ -101,7 +101,7 @@ key retirement or the security of an operator's deployment.
 
 ## Client deployment and authorization
 
-Install the [client SDK](../packages/sdk/README.md) in consuming services and deploy
+Install the [client SDK](../pkg/python/broker_sdk/README.md) in consuming services and deploy
 the broker runtime independently. The SDK owns wire contracts and mTLS transport;
 it has no provider, database, server or administrative dependencies. Client-side
 validation never confers permission.

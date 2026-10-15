@@ -16,7 +16,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from jsonschema import ValidationError, validate
 
-CHART = Path(__file__).resolve().parents[3] / "helm/1password-agent-broker"
+CHART = Path(__file__).resolve().parents[2] / "helm/1password-agent-broker"
 pytestmark = pytest.mark.skipif(shutil.which("helm") is None or not CHART.exists(), reason="Helm source checks run in the chart CI job")
 
 

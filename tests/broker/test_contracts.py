@@ -115,7 +115,7 @@ def test_ci_report_drops_matches(tmp_path: Path) -> None:
             }
         )
     )
-    script = Path(__file__).resolve().parents[3] / "scripts/ci/checks/trivy_report.py"
+    script = Path(__file__).resolve().parents[2] / "scripts/ci/checks/trivy_report.py"
     result = subprocess.run([sys.executable, str(script), str(source), str(output)], capture_output=True, check=False)
     assert result.returncode == 1
     public = output.read_text()

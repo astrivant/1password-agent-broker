@@ -70,10 +70,14 @@ Before handing work back, review applicable project contracts with actual eviden
 ## Client SDK and service deployment
 
 Keep consuming applications on the independently packaged
-[SDK](packages/sdk/README.md), not the complete broker runtime. Shared wire models
-and schemas live in `packages/sdk/pkg/agent_broker_sdk`; preserve protocol
+[SDK](pkg/python/broker_sdk/README.md), not the complete broker runtime. Shared wire models
+and schemas live in `pkg/python/broker_sdk/src/agent_broker_sdk`; preserve protocol
 compatibility and the runtime compatibility import. The root Poetry lock owns
 local testing, and both distributions use one release version and source tag.
+Group multi-package source by language under `pkg/<language>/<package>/`. Each
+distribution owns its manifest, README and source tree; the root is a development
+workspace. Preserve installed imports and update every build, test, cache,
+container, ownership and documentation path when moving a package.
 Run `bash scripts/release/build.sh` and `bash scripts/release/check-wheels.sh` to
 verify artifact metadata and independent installations before publication.
 

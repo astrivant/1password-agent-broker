@@ -1,6 +1,6 @@
 [project]
 name = "1password-agent-broker-sdk"
-version = "0.4.0"
+version = "0.4.1"
 description = "Typed mTLS client for independently deployed 1Password Agent Broker services"
 readme = "README.md"
 requires-python = ">=3.12,!=3.14.1,<4"
@@ -10,15 +10,15 @@ dependencies = ["attrs>=26.1,<27", "cattrs>=26.2.1,<27", "jsonschema>=4.26,<5"]
 
 [project.urls]
 Repository = "https://github.com/astrivant/1password-agent-broker"
-Documentation = "https://github.com/astrivant/1password-agent-broker/blob/main/packages/sdk/README.md"
+Documentation = "https://github.com/astrivant/1password-agent-broker/blob/main/pkg/python/broker_sdk/README.md"
 
 [build-system]
 requires = ["poetry-core==2.5.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-packages = [{include = "agent_broker_sdk", from = "pkg"}]
-include = [{path = "pkg/agent_broker_sdk/resources", format = ["sdist", "wheel"]}]
+packages = [{include = "agent_broker_sdk", from = "src"}]
+include = [{path = "src/agent_broker_sdk/resources", format = ["sdist", "wheel"]}]
 
 [tool.ruff]
-extend = "../../pyproject.toml"
+extend = "../../../pyproject.toml"

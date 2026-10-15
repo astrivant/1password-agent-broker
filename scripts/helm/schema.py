@@ -60,7 +60,7 @@ def main() -> None:
     """
     metadata = yaml.safe_load(Path("helm/1password-agent-broker/Chart.yaml").read_text())
     defaults = yaml.safe_load(Path("helm/1password-agent-broker/values.yaml").read_text())
-    project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+    project = tomllib.loads(Path("pkg/python/broker/pyproject.toml").read_text())["project"]
 
     # Fail generation on mismatched release identities before writing a schema for the wrong image or chart.
     if not metadata["version"] == metadata["appVersion"] == defaults["image"]["tag"] == project["version"]:
