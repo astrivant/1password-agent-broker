@@ -21,8 +21,8 @@ pytestmark = pytest.mark.skipif(shutil.which("helm") is None or not CHART.exists
 
 
 @settings(max_examples=12, deadline=None, derandomize=True)
-@given(replicas=st.integers(2, 16), capacity=st.integers(1, 64), network=st.booleans(), destination=st.booleans())
-def test_ha_contract(replicas: int, capacity: int, network: bool, destination: bool) -> None:
+@given(replicas=st.integers(2, 16), capacity=st.integers(1, 64), network=st.booleans(), destination=st.booleans(), crypto=st.booleans())
+def test_ha_contract(replicas: int, capacity: int, network: bool, destination: bool, crypto: bool) -> None:
     """
     Keep security, durability, and operational contracts intact across supported scale settings.
 
@@ -31,6 +31,7 @@ def test_ha_contract(replicas: int, capacity: int, network: bool, destination: b
         capacity (int): Per-process execution capacity.
         network (bool): Whether the operator delegates ingress filtering to this chart.
         destination (bool): Whether the destination uses a private trust anchor.
+        crypto (bool): Whether to explicitly enable the service-only key boundary.
 
     Returns:
         None: Assert rendered objects retain the intended cross-resource relationships.
@@ -44,7 +45,7 @@ def test_ha_contract(replicas: int, capacity: int, network: bool, destination: b
             "--set",
             f"replicaCount={replicas},capacity={capacity}",
             "--set",
-            f"networkPolicy.enabled={str(network).lower()}",
+            f"networkPolicy.enabled={str(network).lower()},crypto.enabled={str(crypto).lower()}",
             "--set-string",
             f"secrets.destinationCA={'destination-ca' if destination else ''}",
         ],
@@ -70,6 +71,10 @@ def test_ha_contract(replicas: int, capacity: int, network: bool, destination: b
     assert ("NetworkPolicy" in resources) == network
     assert "Secret" not in resources and "PersistentVolumeClaim" not in resources
     config = resources["ConfigMap"]["data"]
+    assert ("--crypto-policy=/etc/broker/config/crypto.json" in container["args"]) == crypto
+    assert ("crypto.json" in config) == crypto
+    if crypto:
+        validate(json.loads(config["crypto.json"]), contracts.schema("crypto-policy"))
     validate(json.loads(config["policy.json"]), contracts.schema("policy"))
     validate(json.loads(config["approvals.json"]), contracts.schema("approvals"))
 

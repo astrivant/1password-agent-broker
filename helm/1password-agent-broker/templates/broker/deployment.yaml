@@ -57,6 +57,9 @@ spec:
             - --capacity={{ .Values.capacity }}
             - --policy=/etc/broker/config/policy.json
             - --approvals=/etc/broker/config/approvals.json
+            {{- if .Values.crypto.enabled }}
+            - --crypto-policy=/etc/broker/config/crypto.json
+            {{- end }}
             - --cert=/etc/broker/tls/tls.crt
             - --key=/etc/broker/tls/tls.key
             - --client-ca=/etc/broker/tls/ca.crt

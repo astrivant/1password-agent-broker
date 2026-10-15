@@ -98,7 +98,8 @@
             "provider_failed",
             "unknown",
             "cancelled",
-            "audit_failed"
+            "audit_failed",
+            "crypto_completed"
           ]
         },
         "result.replayed": {

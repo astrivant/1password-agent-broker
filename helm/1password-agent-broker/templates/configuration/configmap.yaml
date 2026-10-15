@@ -7,3 +7,6 @@ metadata:
 data:
   policy.json: {{ .Values.configuration.policy | toJson | quote }}
   approvals.json: {{ .Values.configuration.approvals | toJson | quote }}
+  {{- if .Values.crypto.enabled }}
+  crypto.json: {{ .Values.crypto.policy | toJson | quote }}
+  {{- end }}

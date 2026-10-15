@@ -78,7 +78,7 @@ required-imports = ["from __future__ import annotations"]
 python_version = "3.12"
 strict = true
 disallow_any_explicit = true
-files = ["pkg", "scripts"]
+files = ["pkg", "scripts", "tests"]
 
 [[tool.mypy.overrides]]
 module = ["onepassword.*"]
@@ -103,7 +103,7 @@ require-return-section-when-returning-nothing = true
 skip-checking-raises = true
 
 [tool.pytest.ini_options]
-testpaths = ["pkg/agent_broker/tests"]
+testpaths = ["pkg/agent_broker/tests", "tests"]
 addopts = "-ra -n auto --import-mode=importlib"
 
 [tool.coverage.run]

@@ -4,6 +4,7 @@ Construct the process application once after validating its service dependencies
 
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING
 
 from attrs import evolve, frozen
@@ -12,8 +13,10 @@ from werkzeug.exceptions import HTTPException
 
 from agent_broker.api.broker import routes
 from agent_broker.api.metrics import MetricsBuilder
+from agent_broker.crypto.api import routes as crypto_routes
 
 if TYPE_CHECKING:
+    from agent_broker.crypto.service import CryptoService
     from agent_broker.engine import Broker
 
 
@@ -25,10 +28,12 @@ class APIBuilder:
     Attributes:
         broker (Broker | None): Injected authorization and execution service.
         capacity (int): Maximum concurrent broker handlers.
+        crypto (CryptoService | None): Explicit opt-in service-only key boundary.
     """
 
     broker: Broker | None = None
     capacity: int = 8
+    crypto: CryptoService | None = None
 
     def with_broker(self, broker: Broker) -> APIBuilder:
         """
@@ -59,7 +64,10 @@ class APIBuilder:
         app = Flask(__name__, static_folder=None)
         app.config.update(MAX_CONTENT_LENGTH=4096, PROPAGATE_EXCEPTIONS=False)
         app.url_map.merge_slashes = False
-        app.register_blueprint(routes(self.broker, self.capacity))
+        slots = threading.BoundedSemaphore(self.capacity)
+        app.register_blueprint(routes(self.broker, slots))
+        if self.crypto is not None:
+            app.register_blueprint(crypto_routes(self.crypto, slots))
         MetricsBuilder(self.broker).build(app)
 
         @app.before_request
@@ -72,7 +80,7 @@ class APIBuilder:
             """
 
             # Host and forwarded headers cannot promote an observability request into a control request.
-            expected = "control" if request.blueprint == "broker" else "observability"
+            expected = "control" if request.blueprint in {"broker", "crypto"} else "observability"
             if request.environ.get("broker.listener") != expected:
                 return Response('{"error":"not found"}', status=404, content_type="application/json")
             return None

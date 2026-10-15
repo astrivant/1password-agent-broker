@@ -19,19 +19,18 @@ if TYPE_CHECKING:
     from agent_broker.engine import Broker
 
 
-def routes(broker: Broker, capacity: int) -> Blueprint:
+def routes(broker: Broker, slots: threading.BoundedSemaphore) -> Blueprint:
     """
     Create a thin capability blueprint with bounded, nonblocking admission.
 
     Args:
         broker (Broker): Injected domain service.
-        capacity (int): Maximum active handlers; excess work receives 503.
+        slots (threading.BoundedSemaphore): Shared execution budget, excluding reserved recovery capacity.
 
     Returns:
         Blueprint: Execution, cancellation, and result-inspection routes.
     """
     blueprint = Blueprint("broker", __name__)
-    slots = threading.BoundedSemaphore(capacity)
     recovery = threading.BoundedSemaphore(2)
     telemetry = broker.ledger.telemetry
 

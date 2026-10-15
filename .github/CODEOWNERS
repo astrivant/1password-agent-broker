@@ -38,3 +38,5 @@
 /scripts/qa/github.sh @emmeowzing
 /.github/dependabot.yml @emmeowzing
 /.gitignore @emmeowzing
+/tests/ @emmeowzing
+/docs/key-service.md @emmeowzing
