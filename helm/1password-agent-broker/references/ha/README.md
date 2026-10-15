@@ -39,7 +39,7 @@ The reference sets only the parameters below. See the [complete chart parameters
 | ------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `replicaCount`     | Broker replicas spread across at least two nodes                                | `2`                                            |
 | `image.repository` | Replace with your operator-published, verified broker image                     | `registry.example/team/1password-agent-broker` |
-| `image.tag`        | Release tag matching the verified image; a private overlay may set image.digest | `0.2.0`                                        |
+| `image.tag`        | Release tag matching the verified image; a private overlay may set image.digest | `0.3.0`                                        |
 
 ### Client and monitoring access
 

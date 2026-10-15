@@ -5,7 +5,7 @@ image:
   ## @param image.repository Operator-published image built from the matching source revision
   repository: registry.example/1password-agent-broker
   ## @param image.tag Immutable release tag; use digest for stronger provenance
-  tag: "0.2.0"
+  tag: "0.3.0"
   ## @param image.digest Optional sha256 digest overriding the tag
   digest: ""
   ## @param image.pullPolicy Kubernetes image pull policy
